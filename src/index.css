@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+@import "leaflet/dist/leaflet.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg-primary: #FFFFFF;     /* pure white background */
+  --color-bg-section: #FFFFFF;     /* pure white for cards and containers */
+  --color-bg-surface: #E8F5EE;     /* light mint-green surface for badges */
+  --color-accent-green: #10B981;   /* premium mint/emerald green */
+  --color-accent-deep: #059669;    /* deeper emerald green for contrast */
+  --color-text-primary: #1F2E26;   /* dark forest-slate for text */
+  --color-text-secondary: #5A7064; /* medium forest-gray text */
+  --color-text-dark: #0A3C22;      /* very dark green-forest text for active highlights */
+  --color-border: #E5F4EB;         /* light mint-green borders */
+  --color-error: #EF4444;          /* modern red */
+  --color-success: #10B981;        /* emerald success */
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar for Premium Light Theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-green);
+}
+
+/* Shimmer Animation Keyframe for skeleton loaders */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-bg {
+  background: linear-gradient(90deg, #E3F2E9 25%, #CEE7D8 50%, #E3F2E9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+.shimmer-bg-dark {
+  background: linear-gradient(90deg, #EBF5EF 25%, #DAEDE2 50%, #EBF5EF 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* Leaflet Map overrides to fit the light green and blue dashboard */
+.leaflet-container {
+  background-color: var(--color-bg-primary) !important;
+  color: var(--color-text-primary) !important;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
+.leaflet-bar a {
+  background-color: var(--color-bg-section) !important;
+  color: var(--color-accent-deep) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+.leaflet-bar a:hover {
+  background-color: var(--color-accent-green) !important;
+  color: #FFFFFF !important;
+}
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: var(--color-bg-section) !important;
+  color: var(--color-text-primary) !important;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+
+

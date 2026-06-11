@@ -1,0 +1,1049 @@
+
+
+RentEase
+Your Gateway to Hassle-Free Living
+Project Requirements Document
+Version 1.0  |  June 2025
+Confidential & Proprietary
+
+1. Executive Summary
+RentEase — Redefining the Rental ExperienceA full-featured, map-integrated property rental platform built for modern living.
+
+RentEase is a comprehensive property rental platform designed to bridge the gap between landlords and tenants. It eliminates friction in property discovery, booking, communication, and payment by combining modern web technologies with real-time capabilities and an intuitive user experience.
+
+The platform is engineered around two primary personas — landlords who need a powerful yet simple toolset to list and manage properties, and tenants who demand fast search, transparent pricing, seamless booking, and trustworthy transactions. An admin layer provides oversight, analytics, and moderation capabilities.
+
+Key differentiators include: an immersive map-centric browsing experience, skeleton-screen loading patterns for perceived performance, a dark-themed UI with light-green accents for visual clarity, real-time in-app messaging, and a hardened backend with rate limiting and role-based access controls.
+
+2. Project Scope
+2.1 In-Scope
+User authentication and role-based onboarding (Landlord / Tenant / Admin)
+Property listing management with image uploads and geolocation tagging
+Map-integrated property discovery (Mapbox / Google Maps)
+Booking management with interactive calendar and availability engine
+Real-time in-app chat between tenants and landlords
+Secure payment gateway integration (Stripe / PayPal)
+Admin dashboard with analytics, user management, and content moderation
+Push notification system via Firebase Cloud Messaging (FCM)
+Rate limiting, CORS policies, and security hardening on backend
+Preloaders, skeleton screens, and loading feedback throughout the UI
+
+2.2 Out-of-Scope (Phase 1)
+Native iOS / Android mobile applications
+Multi-currency or multi-language internationalization
+AI-powered property recommendations or smart search
+Automated lease document generation
+Third-party property management system (PMS) integrations
+
+3. Stakeholders & User Roles
+
+Role
+Type
+Primary Responsibilities
+Tenant
+End User
+Search, book, pay for, and review rental properties
+Landlord
+End User
+List properties, manage bookings, respond to inquiries
+Admin
+Internal
+Platform oversight, content moderation, analytics, user management
+Payment Gateway
+External System
+Process transactions securely (Stripe / PayPal)
+FCM Service
+External System
+Deliver push notifications for chat and booking events
+Map Provider
+External System
+Render interactive property location maps (Mapbox/Google Maps)
+
+
+4. Functional Requirements
+4.1 User Onboarding & Authentication
+Module: AUTH — Registration, Login, Role Assignment
+
+4.1.1 Registration
+Users select their role at signup: Tenant or Landlord.
+Required fields: Full Name, Email, Phone, Password (min 8 chars, 1 uppercase, 1 digit, 1 symbol).
+Email verification via one-time link sent on registration.
+Duplicate email detection with appropriate error messaging.
+Password strength meter displayed in real-time as user types.
+
+4.1.2 Login & Session Management
+JWT-based authentication with access token (15 min) and refresh token (7 days).
+Remember me option extends refresh token to 30 days.
+OAuth 2.0 social login: Google and Facebook.
+Rate limiting: max 5 failed login attempts before temporary lockout (15 minutes).
+Session revocation on password change or manual logout.
+
+4.1.3 Profile Management
+Users can update avatar, bio, contact info, and notification preferences.
+Landlords can add verification documents (government ID, property ownership proof).
+Profile completeness indicator shown as a progress bar.
+
+4.2 Property Listings
+Module: LISTINGS — Create, View, Edit, Delete Properties
+
+4.2.1 Listing Creation (Landlord)
+Multi-step listing wizard: Basic Info > Media > Location > Pricing > Review.
+Property fields: Title, Type (Apartment / House / Studio / Villa), Description, Area (sqft), Bedrooms, Bathrooms, Furnished (Yes/No/Partial).
+Amenities checklist: WiFi, Parking, AC, Gym, Pool, Pet-friendly, etc.
+Image upload: up to 20 images per listing, accepted formats JPG/PNG/WEBP, max 5MB each.
+Real-time image preview with drag-and-drop reordering.
+Thumbnail selection from uploaded images.
+Address input with autocomplete via Mapbox Places API; latitude/longitude auto-populated.
+Pricing: Monthly Rent, Security Deposit, Maintenance Charge, Lease Term options.
+Availability date picker: Mark unavailable date ranges on an interactive calendar.
+Draft saving at each wizard step (auto-save every 60 seconds).
+
+4.2.2 Listing Discovery (Tenant)
+Filter panel: Location radius, Price range, Property type, Bedrooms, Amenities, Availability date.
+Sort options: Price (asc/desc), Newest, Most Popular, Distance.
+Infinite scroll with skeleton card loaders while fetching next page.
+Saved/Favorited listings list in tenant dashboard.
+Share listing via link.
+Recently viewed properties sidebar.
+
+4.2.3 Listing Detail Page
+Full-screen image carousel with lightbox viewer.
+Embedded map showing property location with 500m neighborhood context.
+Availability calendar (read-only) showing booked/available dates.
+Landlord profile snippet with average response time and rating.
+Inquiry / Book Now CTAs with sticky sidebar on desktop.
+Breadcrumb navigation and schema-compliant structured data (SEO).
+
+4.3 Map Integration
+Module: MAP — Geospatial Property Discovery
+
+Primary map provider: Mapbox GL JS (fallback: Google Maps JavaScript API).
+Split-screen layout: listing cards on left, interactive map on right.
+Property pins rendered as custom markers showing price labels.
+Cluster markers for areas with dense listings; expand on click.
+Hovering a listing card highlights corresponding map pin and vice versa.
+Map bounds automatically adjust to visible listings.
+Dragging the map re-fetches listings within new viewport (with loading spinner).
+Draw-to-search: users can draw a polygon on the map to define a custom search area.
+Street view integration (Google Maps) accessible from listing detail.
+
+4.4 Booking Management
+Module: BOOKINGS — Reservations, Calendar, Status Workflow
+
+4.4.1 Booking Flow (Tenant)
+Select desired lease start and end dates from listing availability calendar.
+Review booking summary: property, dates, total cost, deposit.
+Agree to platform Terms of Service before confirming.
+Redirect to payment gateway; booking status set to PENDING_PAYMENT.
+On payment success: status transitions to CONFIRMED; confirmation email dispatched.
+Cancel booking: allowed up to 48 hours before lease start; refund per cancellation policy.
+
+4.4.2 Booking Management (Landlord)
+Booking requests inbox with Accept / Decline / Message actions.
+Calendar view of all bookings with color-coded status indicators.
+Block dates from booking (maintenance, personal use).
+View tenant profile and history before accepting request.
+
+4.4.3 Booking Status Workflow
+
+Status
+Trigger
+Visible To
+Next States
+PENDING_PAYMENT
+Tenant initiates booking
+Tenant, Landlord, Admin
+CONFIRMED, EXPIRED
+CONFIRMED
+Payment successful
+All parties
+ACTIVE, CANCELLED
+ACTIVE
+Lease start date reached
+All parties
+COMPLETED, DISPUTED
+COMPLETED
+Lease end date reached
+All parties
+— (terminal)
+CANCELLED
+User or system action
+All parties
+— (terminal)
+DISPUTED
+Either party raises issue
+All parties + Admin
+RESOLVED, REFUNDED
+EXPIRED
+Payment not made in 30 min
+Tenant, Admin
+— (terminal)
+
+
+4.5 In-App Messaging
+Module: CHAT — Real-Time Communication
+
+WebSocket-based real-time messaging using Django Channels or SignalR (ASP.NET).
+Conversation threads are scoped to a property listing + tenant + landlord triplet.
+Message types: Text, Image attachment (max 2MB), Quick-reply templates.
+Delivered / Read receipts with timestamp.
+Typing indicators.
+Message history paginated; older messages lazy-loaded on scroll with skeleton loaders.
+Conversation list sorted by most recent; unread badge counts.
+FCM push notification triggered when recipient is offline.
+Admin can view all conversations for moderation; flagged conversations highlighted.
+Spam reporting and conversation muting options.
+
+4.6 Secure Payment Integration
+Module: PAYMENTS — Stripe / PayPal Gateway
+
+4.6.1 Payment Flow
+Tenant initiates payment from booking confirmation screen.
+Stripe Checkout or PayPal Smart Buttons rendered in an embedded iframe.
+Payment intent created server-side; amount validated against booking record.
+3D Secure / SCA compliance for international card payments.
+On success: webhook received server-side -> booking confirmed -> email dispatched.
+On failure: error state shown with retry option; booking remains PENDING_PAYMENT for 30 minutes.
+
+4.6.2 Payout & Refunds
+Landlord payout initiated 24 hours after tenant move-in confirmation.
+Platform fee: configurable percentage (default 3%) deducted before payout.
+Cancellation refund: 100% if cancelled 48+ hours before start; 50% within 48 hours.
+Disputed bookings held in escrow until admin resolves.
+
+4.6.3 Financial Records
+Transaction history downloadable as CSV/PDF from both tenant and landlord dashboards.
+Invoices auto-generated per transaction with GST/VAT fields.
+
+4.7 Admin Dashboard
+Module: ADMIN — Platform Management & Analytics
+
+4.7.1 User Management
+View, search, filter, and sort all registered users.
+View user activity log (logins, listings, bookings, payments).
+Suspend, ban, or reinstate user accounts with reason logging.
+Manual verification of landlord documents.
+
+4.7.2 Listing Management
+Review flagged or reported listings.
+Approve, reject, or unpublish listings with notification to landlord.
+Edit any listing field for moderation purposes.
+
+4.7.3 Analytics Dashboard
+KPI widgets: Total Users, Active Listings, Bookings This Month, Revenue This Month.
+Time-series charts: User signups trend (30/90/365 day), Booking volume, Revenue.
+Geographic heatmap of property density.
+Conversion funnel: Listing Views -> Inquiries -> Bookings -> Completed.
+Top 10 most viewed and most booked properties.
+Export reports as CSV or PDF.
+
+4.7.4 Platform Configuration
+Set and update platform fee percentage.
+Manage featured/promoted property slots.
+Configure push notification templates.
+Manage static content: FAQs, Terms of Service, Privacy Policy.
+
+4.8 Push Notifications (Firebase Cloud Messaging)
+Module: NOTIFICATIONS — Real-Time Alerts via FCM
+
+Event
+Recipient
+Channel
+New chat message received
+Offline user
+FCM Push + In-app badge
+Booking request submitted
+Landlord
+FCM Push + Email
+Booking confirmed / rejected
+Tenant
+FCM Push + Email
+Payment successful
+Both parties
+FCM Push + Email
+Lease start reminder (24h)
+Tenant
+FCM Push + Email
+Lease end reminder (48h)
+Both parties
+FCM Push
+New listing in saved search area
+Tenant
+FCM Push
+Document verification approved
+Landlord
+FCM Push + Email
+Account suspended
+User
+Email only
+
+
+5. Non-Functional Requirements
+5.1 Performance
+Initial page load (LCP): under 2.5 seconds on 4G connection.
+Time to Interactive (TTI): under 3.5 seconds.
+API response time P95: under 300ms for read operations, under 600ms for write operations.
+Image delivery via CDN with lazy loading; WebP conversion for uploaded images.
+Database queries: indexed on property location, price, availability, landlord ID.
+Pagination: all list endpoints return maximum 20 items per page.
+
+5.2 Scalability
+Stateless backend services deployable horizontally behind a load balancer.
+PostgreSQL with read replicas for reporting/analytics queries.
+Redis caching layer for session tokens, frequent query results, and rate limit counters.
+WebSocket connections managed via Django Channels / Redis channel layer.
+Static assets and user-uploaded media served from cloud object storage (AWS S3 / GCS).
+
+5.3 Security
+All traffic over HTTPS/TLS 1.3.
+Passwords hashed with bcrypt (cost factor 12).
+SQL injection prevention via ORM parameterized queries.
+XSS protection: CSP headers, output encoding, sanitized HTML inputs.
+CSRF protection on all state-changing endpoints.
+CORS policy: whitelisted origins only.
+File upload validation: MIME type verification, virus scan hook (ClamAV), max size enforcement.
+PCI-DSS: card data never touches our servers (Stripe/PayPal handle tokenization).
+
+5.4 Backend Rate Limiting
+Rate Limiting ArchitectureProtecting the platform from abuse, DDoS, and brute-force attacks.
+
+Rate limiting is enforced at multiple layers using a token-bucket algorithm backed by Redis. All limits are configurable via environment variables without code deployment.
+
+Endpoint Group
+Limit
+Window
+Response on Exceed
+POST /auth/login
+5 requests
+1 minute / IP
+429 + 15-min lockout
+POST /auth/register
+3 requests
+1 hour / IP
+429 Too Many Requests
+POST /auth/forgot-password
+3 requests
+1 hour / IP
+429 Too Many Requests
+GET /properties (search)
+60 requests
+1 minute / user
+429 with Retry-After header
+POST /properties (create)
+10 requests
+1 hour / landlord
+429 Too Many Requests
+POST /messages (send)
+30 requests
+1 minute / user
+429 Too Many Requests
+POST /bookings
+5 requests
+10 minutes / user
+429 Too Many Requests
+POST /payments
+3 requests
+5 minutes / user
+429 Too Many Requests
+GET /admin/* endpoints
+200 requests
+1 minute / admin
+429 Too Many Requests
+Global API (unauthenticated)
+30 requests
+1 minute / IP
+429 Too Many Requests
+
+Rate limit headers returned on all responses:
+X-RateLimit-Limit: maximum allowed requests in window
+X-RateLimit-Remaining: requests left in current window
+X-RateLimit-Reset: Unix timestamp when window resets
+Retry-After: seconds to wait (included only on 429 responses)
+
+5.5 Availability & Reliability
+Target uptime SLA: 99.5% excluding scheduled maintenance.
+Scheduled maintenance windows: Sundays 02:00 – 04:00 UTC with advance notice.
+Database automated backups: daily full, every 6-hour incremental, 30-day retention.
+Health check endpoint (/health) for load balancer probes.
+Graceful degradation: map features fall back to list-only view on API quota exhaustion.
+
+
+6. UI/UX Design Guidelines
+6.1 Visual Design System
+Design Philosophy: Dark Theme + Light Green Accents + Off-White Surfaces
+
+The RentEase interface uses a dark-themed design language. This reduces eye strain during extended browsing sessions, makes property photography pop against the interface, and conveys a premium product feel. Light green accents (#A8D5B5 primary, #6BBF8E deep) establish brand identity, while off-white (#F5F5EE) surfaces provide comfortable reading contrast.
+
+Token
+Hex Value
+Usage
+--color-bg-primary
+#1A1A2E
+Main page background, navigation bar
+--color-bg-section
+#16213E
+Card backgrounds, sidebar panels
+--color-bg-surface
+#F5F5EE
+Content blocks, input backgrounds (light mode)
+--color-accent-green
+#A8D5B5
+Primary CTA buttons, active states, links
+--color-accent-deep
+#6BBF8E
+Hover states, icon fills, progress bars
+--color-banner-light
+#D4EDD9
+Informational banners, tag backgrounds
+--color-text-primary
+#F5F5EE
+Body text on dark backgrounds
+--color-text-secondary
+#B0B0C8
+Captions, placeholders, meta info
+--color-text-dark
+#1A1A2E
+Text on light/off-white surfaces
+--color-border
+#2E2E4E
+Card and input borders in dark mode
+--color-error
+#FF6B6B
+Validation errors, destructive actions
+--color-success
+#6BBF8E
+Success states, confirmation messages
+
+6.2 Typography
+Scale
+Specification
+Display / Hero
+Inter 700, 48px, #A8D5B5 or #F5F5EE
+H1 Section Title
+Inter 700, 32px, #F5F5EE on dark / #1A1A2E on light
+H2 Sub-section
+Inter 600, 24px, #B0B0C8
+H3 Card Title
+Inter 600, 18px, #F5F5EE or #1A1A2E
+Body Regular
+Inter 400, 14px, line-height 1.6, #F5F5EE or #3D3D5C
+Caption / Meta
+Inter 400, 12px, #B0B0C8
+Button Label
+Inter 600, 14px, uppercase tracking 0.5px
+Input Text
+Inter 400, 14px, #1A1A2E on #F5F5EE
+
+6.3 Component Library
+Buttons
+Variant
+Style Description
+Primary
+Background #A8D5B5, text #1A1A2E, border-radius 8px, hover: #6BBF8E, shadow on focus
+Secondary
+Transparent, border 1.5px #A8D5B5, text #A8D5B5, hover: fill #1E3A2F
+Destructive
+Background #FF6B6B, text #FFFFFF, hover darken 10%
+Ghost
+No border, no background, text #B0B0C8, hover: text #F5F5EE
+Disabled
+Background #2E2E4E, text #5A5A7A, cursor: not-allowed
+
+Form Inputs
+Default: border #2E2E4E, background #16213E, text #F5F5EE, placeholder #5A5A7A.
+Focus: border #A8D5B5, box-shadow 0 0 0 3px rgba(168,213,181,0.25).
+Error: border #FF6B6B, helper text in #FF6B6B below field.
+Success: border #6BBF8E, checkmark icon suffix.
+
+Property Listing Cards
+Background #16213E, border-radius 12px, subtle shadow.
+Thumbnail: 16:9 aspect ratio, lazy-loaded with skeleton placeholder.
+Price badge: bottom-left overlay on image, background rgba(26,26,46,0.85), text #A8D5B5.
+Hover: scale 1.02, box-shadow deepens, border color shifts to #A8D5B5.
+
+
+7. Loading States & Perceived Performance
+Loading UX — Skeleton Screens, Spinners & ThrobbersEvery async operation must surface a loading state. No blank screens. No silent waits.
+
+7.1 Design Principles
+Loading states must appear within 100ms of any async action being triggered.
+Skeleton screens are preferred over spinners for content-area loading.
+Spinners/throbbers are used for in-context or action-level loading (button clicks, form submissions).
+Long operations (>3 seconds) must show a progress indicator with estimated completion.
+Loading states must match the dimensions of the content they represent to prevent layout shift (CLS = 0).
+
+7.2 Skeleton Screens
+Full-page skeletons replace content placeholders before data arrives
+
+Skeleton screens are animated placeholders that mimic the layout of the content being loaded. They use a shimmer animation (#1E3A2F to #2A4A3F gradient sweep) on a dark background matching the card structure.
+
+Screen / Component
+Skeleton Structure
+Shimmer Color
+Property listing card grid
+Thumbnail rect + 3 text lines + price badge
+#1E3A2F shimmer
+Property detail page
+Full-width image rect, title line, 2 desc lines, map rect
+#1E3A2F shimmer
+Tenant / Landlord dashboard
+KPI cards (4 rects), booking list rows (6 rows)
+#16213E shimmer
+Admin analytics dashboard
+4 stat widgets, line chart placeholder, table rows
+#16213E shimmer
+Chat conversation list
+Avatar circle + 2 text lines x 8 rows
+#1E3A2F shimmer
+Chat message thread
+Left + right bubble rects, alternating, 10 items
+#1E3A2F shimmer
+User profile page
+Avatar circle, bio block, 2 stat cards
+#16213E shimmer
+Booking history list
+Row: date rect + property thumb + status badge x 5
+#1E3A2F shimmer
+Search filters panel
+Checkbox rows x 8 + range slider rect
+#16213E shimmer
+Map pins (initial load)
+Cluster circle placeholders pulse animation
+#A8D5B5 at 20% opacity
+
+7.3 Inline Spinners & Throbbers
+Trigger Action
+Spinner Type
+Placement & Style
+Login / Register form submit
+Circular spinner replaces button label
+Centered in button, 18px, #1A1A2E on green button
+Search / filter apply
+Pulsing dot trio (throbber)
+Top of results column, under filter bar
+Map viewport drag (re-fetch)
+Pill badge spinner: 'Loading properties...'
+Centered over map, semi-transparent #1A1A2E bg
+Image upload (each file)
+Circular progress ring per image thumbnail
+Overlay on image preview card, % complete label
+Chat message send
+Small spinner beside message bubble
+Right side of outgoing bubble
+Booking confirmation submit
+Full-button spinner + 'Processing...' label
+Centered in CTA button, disables button
+Payment gateway redirect
+Fullscreen overlay spinner
+Centered screen, text: 'Connecting to payment...'
+Admin action (ban/approve)
+Spinner in action dropdown item
+Inline with menu option text
+Lazy-load next page
+Bottom-of-list spinner
+Centered below last card, triggers on intersection
+FCM token registration
+Silent background; no visible spinner
+No UI feedback needed
+
+7.4 Progress Indicators
+Multi-step listing wizard: step progress bar at top (1/5, 2/5 etc.) with label.
+Bulk image upload: overall progress bar showing X of N images uploaded.
+Document verification upload: linear progress bar with percentage.
+Report generation (admin): indeterminate progress bar with 'Generating report...' text.
+
+7.5 Error & Empty States
+Search returns no results: illustrated empty state with 'No properties found' message and filter reset CTA (light green button).
+Network error on API call: toast notification (bottom-right, dark bg, red-left-border), retry button.
+Payment failure: dedicated error screen with reason code and support contact CTA.
+Empty booking history: friendly illustration with 'Start exploring properties' CTA.
+Empty chat: placeholder conversation starter message.
+
+
+8. Technical Architecture
+8.1 Technology Stack
+
+Layer
+Technology
+Version Target
+Rationale
+Frontend Framework
+React.js
+18.x
+Component reusability, ecosystem maturity, hooks
+CSS Framework
+Tailwind CSS
+3.x
+Utility-first, JIT, excellent dark mode support
+State Management
+Zustand + React Query
+Latest stable
+Lightweight global state + server state caching
+Backend (Option A)
+Django + DRF
+5.x + 3.x
+Rapid development, ORM, Channels for WebSocket
+Backend (Option B)
+ASP.NET Core
+8.x
+High performance, SignalR, strong typing
+Database
+PostgreSQL
+16.x
+ACID compliance, PostGIS for geospatial queries
+Cache / Rate Limit
+Redis
+7.x
+Session store, rate limiter, pub/sub for WebSocket
+Real-Time (Django)
+Django Channels
+4.x
+WebSocket + ASGI, integrates with Redis
+Real-Time (ASP.NET)
+SignalR
+8.x
+Hub-based WebSocket, fallback transports
+Maps
+Mapbox GL JS
+3.x
+WebGL rendering, custom styling, places API
+Payments
+Stripe SDK
+Latest stable
+PCI compliance, webhooks, hosted checkout
+Push Notifications
+Firebase (FCM)
+Latest
+Cross-platform, web push support
+File Storage
+AWS S3 / GCS
+—
+Scalable CDN-backed media delivery
+Auth
+JWT + OAuth2
+RFC 7519
+Stateless, role claims embedded in token
+CI/CD
+GitHub Actions
+—
+Automated test, lint, build, deploy pipeline
+Containerization
+Docker + Compose
+Latest
+Environment parity, simplified deployment
+
+8.2 System Architecture Overview
+Client (React SPA) <-> CDN / Load Balancer <-> API Gateway <-> Backend Services <-> PostgreSQL + Redis
+
+The architecture follows a monolithic-first approach for Phase 1 (reducing operational complexity) with clear domain boundaries to enable extraction into microservices in Phase 2 if traffic demands it.
+
+React SPA served from CDN (CloudFront / Cloudflare). All static assets cached at edge.
+REST API handles all CRUD operations. GraphQL considered for Phase 2.
+WebSocket connections for chat handled by Django Channels / SignalR, backed by Redis pub/sub.
+File uploads go directly from client to S3 using pre-signed URLs (backend issues, client uploads directly).
+Payment webhooks from Stripe arrive at a dedicated webhook endpoint, verified by signature.
+All background tasks (email dispatch, FCM sending, payout processing) handled by Celery (Django) or Hangfire (ASP.NET).
+
+9. API Contracts (Summary)
+9.1 Authentication Endpoints
+
+Method + Path
+Auth Required
+Description
+POST /api/auth/register
+None
+Register new user (tenant or landlord)
+POST /api/auth/login
+None
+Login; returns access + refresh tokens
+POST /api/auth/refresh
+Refresh Token
+Issue new access token
+POST /api/auth/logout
+Access Token
+Revoke refresh token
+POST /api/auth/forgot-password
+None
+Send password reset email
+POST /api/auth/reset-password
+Reset Token
+Set new password
+GET /api/auth/me
+Access Token
+Get current user profile
+PATCH /api/auth/me
+Access Token
+Update current user profile
+
+9.2 Property Endpoints
+
+Method + Path
+Auth Required
+Description
+GET /api/properties
+None (optional)
+List/search properties with filters
+POST /api/properties
+Landlord
+Create new property listing
+GET /api/properties/:id
+None
+Get property detail
+PATCH /api/properties/:id
+Landlord (owner)
+Update property listing
+DELETE /api/properties/:id
+Landlord (owner) / Admin
+Soft-delete listing
+POST /api/properties/:id/images
+Landlord (owner)
+Upload images; returns signed S3 URLs
+POST /api/properties/:id/favorite
+Tenant
+Toggle favorite status
+GET /api/properties/:id/availability
+None
+Get availability calendar data
+
+9.3 Booking & Payment Endpoints
+
+Method + Path
+Auth Required
+Description
+POST /api/bookings
+Tenant
+Create booking (returns payment intent)
+GET /api/bookings
+Tenant / Landlord
+List own bookings (scoped by role)
+GET /api/bookings/:id
+Booking participant
+Get booking detail
+PATCH /api/bookings/:id/status
+Landlord / Admin
+Accept or reject booking request
+DELETE /api/bookings/:id
+Tenant (within policy)
+Cancel booking
+POST /api/payments/webhook
+None (Stripe signature)
+Stripe webhook handler
+GET /api/payments/history
+Authenticated
+Get payment transaction history
+
+
+10. Database Schema (Core Entities)
+10.1 Users Table
+Column
+Type
+Constraints
+Notes
+id
+UUID
+PK, NOT NULL
+Auto-generated v4
+email
+VARCHAR(254)
+UNIQUE, NOT NULL
+Verified email address
+password_hash
+VARCHAR(72)
+NOT NULL
+bcrypt hash
+full_name
+VARCHAR(100)
+NOT NULL
+
+phone
+VARCHAR(20)
+NULLABLE
+
+role
+ENUM
+NOT NULL
+TENANT | LANDLORD | ADMIN
+avatar_url
+TEXT
+NULLABLE
+S3 / CDN URL
+is_verified
+BOOLEAN
+DEFAULT FALSE
+Email verification flag
+is_active
+BOOLEAN
+DEFAULT TRUE
+Account status
+created_at
+TIMESTAMPTZ
+NOT NULL
+Auto-set on insert
+updated_at
+TIMESTAMPTZ
+NOT NULL
+Auto-updated on change
+
+10.2 Properties Table
+Column
+Type
+Constraints
+Notes
+id
+UUID
+PK, NOT NULL
+
+landlord_id
+UUID
+FK -> users.id
+Indexed
+title
+VARCHAR(200)
+NOT NULL
+
+type
+ENUM
+NOT NULL
+APARTMENT | HOUSE | STUDIO | VILLA | OTHER
+description
+TEXT
+NOT NULL
+
+area_sqft
+INTEGER
+NOT NULL
+
+bedrooms
+SMALLINT
+NOT NULL
+
+bathrooms
+SMALLINT
+NOT NULL
+
+monthly_rent
+NUMERIC(10,2)
+NOT NULL
+
+security_deposit
+NUMERIC(10,2)
+NOT NULL
+
+latitude
+DOUBLE PRECISION
+NOT NULL
+Indexed with PostGIS
+longitude
+DOUBLE PRECISION
+NOT NULL
+Indexed with PostGIS
+status
+ENUM
+DEFAULT DRAFT
+DRAFT | PUBLISHED | SUSPENDED | DELETED
+created_at
+TIMESTAMPTZ
+NOT NULL
+
+
+10.3 Bookings Table
+Column
+Type
+Constraints
+Notes
+id
+UUID
+PK, NOT NULL
+
+property_id
+UUID
+FK -> properties.id
+Indexed
+tenant_id
+UUID
+FK -> users.id
+Indexed
+start_date
+DATE
+NOT NULL
+Lease start
+end_date
+DATE
+NOT NULL
+Lease end
+total_amount
+NUMERIC(12,2)
+NOT NULL
+Computed at booking time
+platform_fee
+NUMERIC(10,2)
+NOT NULL
+Captured at time of booking
+status
+ENUM
+NOT NULL
+See workflow in Section 4.4.3
+payment_intent_id
+VARCHAR(100)
+NULLABLE
+Stripe Payment Intent ID
+cancelled_at
+TIMESTAMPTZ
+NULLABLE
+
+cancellation_reason
+TEXT
+NULLABLE
+
+created_at
+TIMESTAMPTZ
+NOT NULL
+
+
+11. Testing Requirements
+11.1 Test Coverage Targets
+Layer
+Coverage Target
+Backend unit tests (services / business logic)
+85% line coverage
+Backend integration tests (API endpoints)
+90% endpoint coverage
+Frontend unit tests (utility functions, hooks)
+75% line coverage
+Frontend component tests (React Testing Library)
+Critical paths: 100%
+End-to-end tests (Playwright)
+All primary user journeys
+Performance tests (k6)
+API endpoints under 2x expected peak load
+
+11.2 Key Test Scenarios
+User registers as Tenant, verifies email, logs in, searches properties, books one, pays, receives confirmation.
+Landlord creates a 5-image listing, sets availability, receives booking request, accepts, receives payout.
+Tenant cancels booking within policy window; refund initiated; status transitions correctly.
+Admin bans a user; banned user receives email; all active sessions revoked.
+Rate limiter triggers on 6th login attempt; user receives 429 with Retry-After header.
+Skeleton screens appear within 100ms of page navigation; replaced by content on data arrival.
+Map clusters expand on click; list panel updates to show visible properties.
+Stripe webhook signature validation rejects tampered payloads.
+
+
+12. Deployment & DevOps
+12.1 Environments
+Environment
+Purpose
+Deployment Trigger
+Development (local)
+Daily developer work
+Manual (docker compose up)
+Staging
+QA, UAT, integration testing
+Push to develop branch
+Production
+Live user traffic
+Merge to main + manual approval
+
+12.2 CI/CD Pipeline (GitHub Actions)
+On every PR: lint (ESLint + Ruff/Flake8), unit tests, build check.
+On merge to develop: integration tests, Docker image build, push to registry, deploy to staging.
+On merge to main: same as above + E2E tests on staging -> deploy to production on approval.
+Rollback: single-command rollback to previous Docker image tag.
+
+12.3 Infrastructure
+Containerized deployment via Docker Compose (dev/staging) and Kubernetes (production).
+Database: managed PostgreSQL (AWS RDS / GCP Cloud SQL) with automated failover.
+Redis: managed cluster (AWS ElastiCache / Upstash) for production.
+CDN: CloudFront (AWS) or Cloudflare for static assets and map tile caching.
+SSL certificates: auto-renewed via Let's Encrypt / ACM.
+Centralized logging: structured JSON logs shipped to Datadog or Loki + Grafana.
+Error tracking: Sentry integration on both frontend and backend.
+
+13. Risk Register
+
+Risk
+Likelihood
+Impact
+Mitigation
+Mapbox API quota exhaustion during traffic spike
+Medium
+High
+Client-side tile caching; fallback to Google Maps; set quota alerts
+Stripe webhook delivery failure
+Low
+High
+Idempotency keys on all webhook handlers; retry queue; manual reconciliation tooling
+FCM push notification delivery failure
+Medium
+Medium
+In-app notification inbox as fallback; email fallback for critical events
+Rate limiter Redis failure
+Low
+High
+Fallback to in-memory rate limiting per instance; alerting on Redis unavailability
+Large image uploads degrading API performance
+Medium
+Medium
+Direct-to-S3 signed URL uploads bypass API server; client-side size validation
+WebSocket connection scaling under load
+Medium
+High
+Redis channel layer scales horizontally; sticky sessions on load balancer
+Payment fraud or chargebacks
+Low
+High
+Stripe Radar fraud rules; deposit held in escrow; dispute management flow in admin
+
+14. Glossary
+Term
+Definition
+LCP
+Largest Contentful Paint — Core Web Vital measuring load performance
+CLS
+Cumulative Layout Shift — Core Web Vital measuring visual stability
+FCM
+Firebase Cloud Messaging — Google's cross-platform push notification service
+JWT
+JSON Web Token — compact, self-contained token for authentication
+DRF
+Django REST Framework — toolkit for building REST APIs in Django
+PostGIS
+PostgreSQL extension enabling geospatial queries
+SCA
+Strong Customer Authentication — EU PSD2 requirement for online payments
+PCI-DSS
+Payment Card Industry Data Security Standard
+CDN
+Content Delivery Network — distributed servers for fast static asset delivery
+Skeleton Screen
+Animated placeholder UI shown while content is loading
+Throbber
+Animated indicator (typically spinning or pulsing) signalling background activity
+Rate Limiting
+Controlling the number of API requests a user/IP can make in a given time window
+Token Bucket
+Rate limiting algorithm that allows burst traffic up to a bucket capacity
+WebSocket
+Full-duplex communication protocol over a persistent TCP connection
+ASGI
+Asynchronous Server Gateway Interface — Python async web server standard
+Soft Delete
+Marking a record as deleted in the database without physically removing it
+
+15. Document Control
+Version
+Date
+Change Summary
+0.1 Draft
+May 2025
+Initial draft — scope and overview
+0.5 Draft
+May 2025
+Added functional requirements, tech stack, DB schema
+1.0 Final
+June 2025
+Full PRD: UI/UX guidelines, loading states, rate limiting, risk register
+
+Document Owner: Product Team — RentEase
+Review Cycle: Quarterly or on major feature addition.
+Distribution: Internal only — Engineering, Design, QA, Product, Finance.
+
