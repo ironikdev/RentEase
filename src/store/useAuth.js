@@ -82,6 +82,11 @@ export const useAuth = create((set, get) => ({
   signIn: async (email, password) => {
     set({ loading: true, error: null });
     try {
+      const DEV_VERBOSE = import.meta.env.DEV;
+      if (DEV_VERBOSE) {
+        const masked = password ? '*'.repeat(Math.min(3, password.length)) : '';
+        console.debug('[useAuth] signIn attempt', { email: email?.toLowerCase(), password: masked });
+      }
       const lowerEmail = email.toLowerCase();
       if (password === 'password' && ['admin@rentease.com', 'landlord@rentease.com', 'tenant@rentease.com'].includes(lowerEmail)) {
         let profileData = null;
@@ -163,25 +168,73 @@ export const useAuth = create((set, get) => ({
         return { success: true };
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (DEV_VERBOSE) console.debug('[useAuth] supabase.auth.signInWithPassword result', { data, error });
 
       if (error) throw error;
 
-      // Fetch user profile
-      const { data: profile, error: profError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
+      // Fetch user profile; if missing, attempt to create a fallback profile
+      let profile = null;
+      try {
+        const { data: profData, error: profError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
 
-      if (profError) throw profError;
+        if (profError || !profData) {
+          // Build fallback from auth metadata
+          const fallback = {
+            id: data.user.id,
+            email: data.user.email,
+            full_name: data.user.user_metadata?.full_name || '',
+            role: data.user.user_metadata?.role || 'TENANT',
+            phone: data.user.user_metadata?.phone || '',
+            avatar_url: data.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(data.user.email)}`,
+            is_verified: false,
+            is_active: true
+          };
+
+          // Try to insert fallback profile (idempotent if it already exists)
+          const { data: insertData, error: insertError } = await supabase
+            .from('profiles')
+            .insert(fallback)
+            .select('*');
+
+          if (insertError) {
+            // If insert fails because profile already exists concurrently, attempt to read again
+            const { data: retryData /*, error: retryErr */ } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
+            profile = retryData || fallback;
+          } else {
+            // Insert returned data may be array or object depending on client
+            profile = Array.isArray(insertData) ? insertData[0] : insertData;
+          }
+        } else {
+          profile = profData;
+        }
+      } catch (errProfile) {
+        // As a last resort, construct an in-memory fallback profile so UI can proceed
+        profile = {
+          id: data.user.id,
+          email: data.user.email,
+          full_name: data.user.user_metadata?.full_name || 'Guest User',
+          role: data.user.user_metadata?.role || 'TENANT',
+          phone: data.user.user_metadata?.phone || '',
+          avatar_url: data.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(data.user.email)}`,
+          is_verified: false,
+          is_active: true
+        };
+      }
 
       set({ user: data.user, profile, loading: false });
       return { success: true };
     } catch (err) {
+      if (import.meta.env.DEV) console.error('[useAuth] signIn error', err);
       set({ error: err.message, loading: false });
       return { success: false, error: err.message };
     }
@@ -220,17 +273,43 @@ export const useAuth = create((set, get) => ({
     
     // Listen for auth state changes
     supabase.auth.onAuthStateChange(async (event, session) => {
+      if (import.meta.env.DEV) console.debug('[useAuth] onAuthStateChange', { event, session });
       if (session?.user) {
         try {
-          const { data: profile } = await supabase
+          // Try to load profile from DB
+          const { data: profileData, error: profError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
 
+          let profile = null;
+          if (profError || !profileData) {
+            // Attempt to create fallback profile row
+            const fallback = {
+              id: session.user.id,
+              email: session.user.email,
+              full_name: session.user.user_metadata?.full_name || 'Guest User',
+              role: session.user.user_metadata?.role || 'TENANT',
+              phone: session.user.user_metadata?.phone || '',
+              avatar_url: session.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(session.user.email)}`,
+              is_verified: false,
+              is_active: true
+            };
+
+            const { data: insertData, error: insertError } = await supabase
+              .from('profiles')
+              .insert(fallback)
+              .select('*');
+
+            profile = insertError ? (Array.isArray(insertData) ? insertData[0] : insertData) : (Array.isArray(insertData) ? insertData[0] : insertData) || fallback;
+          } else {
+            profile = profileData;
+          }
+
           set({ user: session.user, profile, loading: false });
         } catch (err) {
-          // Fail-safe default profile
+          // Fail-safe default profile to keep UI usable
           set({
             user: session.user,
             profile: {

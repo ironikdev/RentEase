@@ -339,7 +339,7 @@ export default function BookingCheckout() {
 
       {/* Stripe Secure Modal Redirect simulation overlay */}
       {processing && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1020] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-xl p-8 max-w-sm w-full text-center space-y-4 shadow-xl">
             <div className="relative w-14 h-14 mx-auto">
               <Loader2 className="animate-spin text-[#635BFF] w-full h-full" size={56} />

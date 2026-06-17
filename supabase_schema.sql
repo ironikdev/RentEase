@@ -78,6 +78,7 @@ create table public.properties (
   latitude double precision not null,
   longitude double precision not null,
   status text not null default 'PUBLISHED' check (status in ('DRAFT', 'PUBLISHED', 'SUSPENDED', 'DELETED')),
+  availability_status text not null default 'Available' check (availability_status in ('Available', 'Unavailable')),
   amenities text[] default '{}' not null,
   image_urls text[] default '{}' not null,
   availability jsonb default '{"booked_dates": []}'::jsonb not null,
@@ -337,3 +338,109 @@ INSERT INTO public.properties (
   ARRAY['WiFi', 'Parking', 'Pet-friendly'],
   ARRAY['https://images.unsplash.com/photo-1484154218962-a197022b5858?w=600', 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600']
 );
+
+-- 5. TRIGGER TO AUTOMATICALLY UPDATE PROPERTY AVAILABILITY STATUS
+-- Updates the property's availability JSONB column when a booking is confirmed, active, or cancelled.
+CREATE OR REPLACE FUNCTION public.handle_booking_status_change()
+RETURNS trigger AS $$
+BEGIN
+  IF (NEW.status IN ('CONFIRMED', 'ACTIVE')) THEN
+    UPDATE public.properties
+    SET availability = availability || '{"is_available": false}'::jsonb,
+        availability_status = 'Unavailable'
+    WHERE id = NEW.property_id;
+  ELSIF (NEW.status IN ('CANCELLED', 'COMPLETED', 'EXPIRED')) THEN
+    -- Check if there are any other active/confirmed bookings
+    IF NOT EXISTS (
+      SELECT 1 FROM public.bookings
+      WHERE property_id = NEW.property_id
+      AND id != NEW.id
+      AND status IN ('CONFIRMED', 'ACTIVE')
+    ) THEN
+      UPDATE public.properties
+      SET availability = availability || '{"is_available": true}'::jsonb,
+          availability_status = 'Available'
+      WHERE id = NEW.property_id;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_booking_status_changed
+  AFTER UPDATE OF status OR INSERT ON public.bookings
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_booking_status_change();
+
+
+-- 6. FAVORITES TABLE
+create table public.favorites (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  property_id uuid references public.properties(id) on delete cascade not null,
+  created_at timestamptz default now() not null,
+  unique(user_id, property_id)
+);
+
+-- Enable RLS on Favorites
+alter table public.favorites enable row level security;
+
+-- Favorites Policies
+create policy "Users can view their own favorites" 
+  on public.favorites for select 
+  using (auth.uid() = user_id);
+
+create policy "Users can insert their own favorites" 
+  on public.favorites for insert 
+  with check (auth.uid() = user_id);
+
+create policy "Users can delete their own favorites" 
+  on public.favorites for delete 
+  using (auth.uid() = user_id);
+
+create policy "Landlords and Admins can view all favorites" 
+  on public.favorites for select 
+  using (
+    exists (
+      select 1 from public.profiles 
+      where profiles.id = auth.uid() 
+      and profiles.role in ('LANDLORD', 'ADMIN')
+    )
+  );
+
+-- 7. NOTIFICATIONS TABLE
+create table public.notifications (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  property_id uuid references public.properties(id) on delete cascade,
+  title text not null,
+  message text not null,
+  is_read boolean default false not null,
+  created_at timestamptz default now() not null
+);
+
+-- Enable RLS on Notifications
+alter table public.notifications enable row level security;
+
+-- Notifications Policies
+create policy "Users can view their own notifications" 
+  on public.notifications for select 
+  using (auth.uid() = user_id);
+
+create policy "Users can update their own notifications" 
+  on public.notifications for update 
+  using (auth.uid() = user_id);
+
+create policy "Users can delete their own notifications" 
+  on public.notifications for delete 
+  using (auth.uid() = user_id);
+
+create policy "Landlords and Admins can insert notifications" 
+  on public.notifications for insert 
+  with check (
+    exists (
+      select 1 from public.profiles 
+      where profiles.id = auth.uid() 
+      and profiles.role in ('LANDLORD', 'ADMIN')
+    )
+  );
+

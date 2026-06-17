@@ -34,6 +34,17 @@ const DEFAULT_PROFILES = [
     created_at: new Date(Date.now() - 15 * 86400000).toISOString()
   },
   {
+    id: 'devansh-id',
+    email: 'devansh@gmail.com',
+    full_name: 'Devansh',
+    role: 'TENANT',
+    phone: '',
+    avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+    is_verified: false,
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
     id: 'mock-admin-id',
     email: 'admin@rentease.com',
     full_name: 'Super Admin',
@@ -349,6 +360,11 @@ const createMockClient = () => {
 
         eq(column, value) {
           queryData = queryData.filter(item => item[column] === value);
+          return this;
+        },
+
+        in(column, values) {
+          queryData = queryData.filter(item => values.includes(item[column]));
           return this;
         },
 

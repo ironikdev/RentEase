@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../store/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { useNotifications } from '../store/useNotifications';
 import { 
   Users, 
   Home, 
@@ -147,6 +148,32 @@ export default function AdminDashboard() {
       setProperties(prev => prev.map(p => p.id === propId ? { ...p, status: newStatus } : p));
     } catch (err) {
       alert('Error updating property status: ' + err.message);
+    }
+  };
+
+  const { triggerNotificationWorkflow } = useNotifications();
+
+  const handleTogglePropertyAvailability = async (propId, currentAvailabilityStatus) => {
+    const newAvailabilityStatus = currentAvailabilityStatus === 'Available' ? 'Unavailable' : 'Available';
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .update({ availability_status: newAvailabilityStatus })
+        .eq('id', propId);
+
+      if (error) throw error;
+
+      setProperties(prev => prev.map(p => p.id === propId ? { ...p, availability_status: newAvailabilityStatus } : p));
+
+      // Trigger notification workflow if transitioning from Unavailable -> Available
+      if (currentAvailabilityStatus === 'Unavailable' && newAvailabilityStatus === 'Available') {
+        const propToNotify = properties.find(p => p.id === propId);
+        if (propToNotify) {
+          await triggerNotificationWorkflow(propToNotify);
+        }
+      }
+    } catch (err) {
+      alert('Error updating property availability: ' + err.message);
     }
   };
 
@@ -512,6 +539,7 @@ export default function AdminDashboard() {
                   <th className="py-3 px-2">Type</th>
                   <th className="py-3 px-2">Price Modifier (₹)</th>
                   <th className="py-3 px-2">Status</th>
+                  <th className="py-3 px-2">Availability</th>
                   <th className="py-3 px-2 text-right">Actions</th>
                 </tr>
               </thead>
@@ -562,8 +590,24 @@ export default function AdminDashboard() {
                           {p.status}
                         </span>
                       </td>
+                      <td className="py-3 px-2">
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase ${(p.availability_status || 'Available') === 'Unavailable' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-brand-green/20 text-brand-green border-brand-green/30'}`}>
+                          {p.availability_status || 'Available'}
+                        </span>
+                      </td>
                       <td className="py-3 px-2 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleTogglePropertyAvailability(p.id, p.availability_status || 'Available')}
+                            className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase border transition-colors ${
+                              (p.availability_status || 'Available') === 'Available'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                : 'bg-brand-surface text-brand-green border-brand-green/25 hover:bg-brand-green/10'
+                            }`}
+                            title="Toggle Availability Status"
+                          >
+                            {(p.availability_status || 'Available') === 'Available' ? 'Make Unavailable' : 'Make Available'}
+                          </button>
                           <button
                             onClick={() => handleTogglePropertyStatus(p.id, p.status)}
                             className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${p.status === 'PUBLISHED' ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100' : 'bg-brand-surface text-brand-green border border-brand-green/30 hover:bg-brand-green/20'}`}

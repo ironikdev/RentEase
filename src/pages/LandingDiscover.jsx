@@ -6,6 +6,7 @@ import { PropertyCard } from '../components/properties/PropertyCard';
 import { InteractiveMap } from '../components/map/InteractiveMap';
 import { SkeletonLoader } from '../components/common/SkeletonLoader';
 import { Search, SlidersHorizontal, ArrowUpDown, X, MapPin, Home, Plus, Trash2, ExternalLink, Wallet, TrendingUp, UserCheck, MessageSquare, Calendar } from 'lucide-react';
+import { useNotifications } from '../store/useNotifications';
 
 export default function LandingDiscover() {
   const [properties, setProperties] = useState([]);
@@ -46,7 +47,8 @@ export default function LandingDiscover() {
 
   // Filter and sort application
   useEffect(() => {
-    let result = [...properties];
+    // Only show Available properties in the main feed
+    let result = properties.filter(p => (p.availability_status || 'Available') === 'Available');
 
     // Filter by text search
     if (searchTerm.trim() !== '') {
@@ -161,6 +163,38 @@ export default function LandingDiscover() {
     }
     loadLandlordDashboard();
   }, [profile]);
+
+  const { triggerNotificationWorkflow } = useNotifications();
+
+  const handleTogglePropertyAvailability = async (propId, currentAvailabilityStatus) => {
+    const newAvailabilityStatus = currentAvailabilityStatus === 'Available' ? 'Unavailable' : 'Available';
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .update({ availability_status: newAvailabilityStatus })
+        .eq('id', propId);
+
+      if (error) throw error;
+
+      // Update state locally
+      setLandlordProperties(prev => 
+        prev.map(p => p.id === propId ? { ...p, availability_status: newAvailabilityStatus } : p)
+      );
+      setProperties(prev =>
+        prev.map(p => p.id === propId ? { ...p, availability_status: newAvailabilityStatus } : p)
+      );
+
+      // Trigger notification workflow if transitioning from Unavailable -> Available
+      if (currentAvailabilityStatus === 'Unavailable' && newAvailabilityStatus === 'Available') {
+        const propToNotify = landlordProperties.find(p => p.id === propId) || properties.find(p => p.id === propId);
+        if (propToNotify) {
+          await triggerNotificationWorkflow(propToNotify);
+        }
+      }
+    } catch (err) {
+      alert('Error updating property availability: ' + err.message);
+    }
+  };
 
   const handleDeleteProperty = async (propId) => {
     if (window.confirm('Are you sure you want to delete this property? This will also delete all related bookings.')) {
@@ -530,8 +564,8 @@ export default function LandingDiscover() {
                         className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
                       />
                       <div className="absolute top-3 right-3 flex gap-1">
-                        <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded shadow border ${isBooked ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-brand-green/20 text-brand-green border-brand-green/30'}`}>
-                          {isBooked ? 'Leased' : 'Available'}
+                        <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded shadow border ${(prop.availability_status || 'Available') === 'Unavailable' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-brand-green/20 text-brand-green border-brand-green/30'}`}>
+                          {prop.availability_status || 'Available'}
                         </span>
                         <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded shadow border ${prop.status === 'PUBLISHED' ? 'bg-brand-surface text-brand-green border-brand-green/20' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                           {prop.status}
@@ -559,6 +593,17 @@ export default function LandingDiscover() {
                         </span>
                         
                         <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleTogglePropertyAvailability(prop.id, prop.availability_status || 'Available')}
+                            className={`px-2.5 py-1 text-[10px] font-bold rounded border transition-colors ${
+                              (prop.availability_status || 'Available') === 'Available'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                : 'bg-brand-surface text-brand-green border-brand-green/25 hover:bg-brand-green/10'
+                            }`}
+                            title="Toggle Availability Status"
+                          >
+                            {(prop.availability_status || 'Available') === 'Available' ? 'Make Unavailable' : 'Make Available'}
+                          </button>
                           <Link
                             to={`/properties/${prop.id}`}
                             className="p-1.5 bg-brand-surface hover:bg-brand-green/20 border border-brand-green/25 text-brand-green rounded transition-colors"
@@ -587,7 +632,7 @@ export default function LandingDiscover() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] w-full overflow-hidden bg-brand-bg font-sans">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-130px)] w-full overflow-hidden bg-brand-bg font-sans">
       {/* LEFT: Filters & Listing Grid */}
       <div className="w-full lg:w-[55%] flex flex-col h-full border-r border-brand-border overflow-y-auto p-4 sm:p-6 space-y-6">
         
@@ -764,7 +809,7 @@ export default function LandingDiscover() {
       </div>
 
       {/* RIGHT: Full interactive Map */}
-      <div className="hidden lg:block lg:w-[45%] h-full relative">
+      <div className="hidden lg:block lg:w-[45%] h-full relative z-0">
         <InteractiveMap
           properties={filteredProperties}
           activePropId={activePropId}

@@ -9,9 +9,14 @@ import BookingCheckout from './pages/BookingCheckout';
 import ChatRoom from './pages/ChatRoom';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import DebugAuth from './pages/DebugAuth';
 import AdminDashboard from './pages/AdminDashboard';
+import Favorites from './pages/Favorites';
 import GlobalChatbot from './components/common/GlobalChatbot';
-import { Home, Calendar, MessageSquare, PlusCircle, LogOut, KeyRound, Shield } from 'lucide-react';
+import NotificationBell from './components/common/NotificationBell';
+import { useFavorites } from './store/useFavorites';
+import { useNotifications } from './store/useNotifications';
+import { Home, Calendar, MessageSquare, PlusCircle, LogOut, KeyRound, Shield, Heart } from 'lucide-react';
 
 function Navigation() {
   const { profile, signOut, getProfileCompleteness } = useAuth();
@@ -25,7 +30,7 @@ function Navigation() {
   const completeness = getProfileCompleteness();
 
   return (
-    <nav className="bg-brand-section border-b border-brand-border px-4 py-3 sm:px-6 sticky top-0 z-40 shadow-md">
+    <nav className="bg-brand-section border-b border-brand-border px-4 py-3 sm:px-6 sticky top-0 z-[1010] shadow-md">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         
         {/* LOGO */}
@@ -42,6 +47,9 @@ function Navigation() {
         <div className="flex items-center gap-2 sm:gap-4 text-xs font-semibold uppercase tracking-wider">
           <Link to="/" className="text-brand-secondary hover:text-brand-text px-2.5 py-2 transition-colors">
             Discover
+          </Link>
+          <Link to="/favorites" className="text-brand-secondary hover:text-brand-text px-2.5 py-2 flex items-center gap-1 transition-colors">
+            <Heart size={13} /> Favorites
           </Link>
           
           {profile && (
@@ -67,6 +75,7 @@ function Navigation() {
 
         {/* PROFILE ACTIONS & SESSION STATUS */}
         <div className="flex items-center gap-3">
+          <NotificationBell />
           {profile ? (
             <div className="flex items-center gap-3.5">
               {/* Profile completeness meter */}
@@ -134,11 +143,34 @@ function Logout() {
 }
 
 function App() {
-  const { initSession } = useAuth();
+  const { initSession, profile } = useAuth();
+  const { loadFavorites, favoriteIds } = useFavorites();
+  const { loadNotifications, checkFavoritesAvailability } = useNotifications();
 
   useEffect(() => {
     initSession();
   }, [initSession]);
+
+  useEffect(() => {
+    loadFavorites(profile?.id);
+    loadNotifications(profile?.id);
+  }, [profile?.id, loadFavorites, loadNotifications]);
+
+  // Periodically check favorites availability status and trigger alerts if status changes
+  useEffect(() => {
+    const storageKey = profile ? `rentease_favorites_${profile.id}` : 'rentease_favorites_anon';
+    const currentFavIds = favoriteIds[storageKey] || [];
+    
+    if (currentFavIds.length > 0) {
+      checkFavoritesAvailability(profile?.id, currentFavIds);
+      
+      const interval = setInterval(() => {
+        checkFavoritesAvailability(profile?.id, currentFavIds);
+      }, 30000); // Poll every 30 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [profile, profile?.id, favoriteIds, checkFavoritesAvailability]);
 
   return (
     <Router>
@@ -155,7 +187,13 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/favorites" element={<Favorites />} />
             <Route path="/logout" element={<Logout />} />
+            {import.meta.env.DEV && (
+              <>
+                <Route path="/debug-auth" element={<DebugAuth />} />
+              </>
+            )}
           </Routes>
         </main>
         <GlobalChatbot />

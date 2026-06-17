@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, BedDouble, Bath, Maximize } from 'lucide-react';
+import { MapPin, BedDouble, Bath, Maximize, Heart } from 'lucide-react';
+import { useAuth } from '../../store/useAuth';
+import { useFavorites } from '../../store/useFavorites';
 
 const getBengaluruArea = (lat, lng, title) => {
   const t = title ? title.toLowerCase() : '';
@@ -22,7 +24,18 @@ const getBengaluruArea = (lat, lng, title) => {
 
 export const PropertyCard = ({ property, onHover }) => {
   const [imgLoaded, setImgLoaded] = useState(false);
+  const { profile } = useAuth();
+  const { isFavorite, toggleFavorite } = useFavorites();
+  
+  const favorited = isFavorite(property.id, profile?.id);
+  const isAvailable = property.availability?.is_available !== false;
   const primaryImage = property.image_urls?.[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600';
+
+  const handleLike = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFavorite(property.id, profile?.id);
+  };
 
   return (
     <Link
@@ -44,11 +57,33 @@ export const PropertyCard = ({ property, onHover }) => {
           loading="lazy"
         />
 
+        {/* Like/Heart Button Overlay */}
+        <button
+          onClick={handleLike}
+          className={`absolute top-3 left-3 p-1.5 rounded-full border shadow-md backdrop-blur-sm transition-all duration-300 z-10 ${
+            favorited 
+              ? 'bg-brand-error/15 border-brand-error text-brand-error hover:bg-brand-error/25 hover:scale-110' 
+              : 'bg-brand-section/80 border-brand-border text-brand-secondary hover:text-brand-error hover:border-brand-error hover:bg-brand-section hover:scale-110'
+          }`}
+          title={favorited ? 'Remove from Favorites' : 'Add to Favorites'}
+        >
+          <Heart size={14} fill={favorited ? 'currentColor' : 'none'} className="transition-transform duration-300" />
+        </button>
+
         {/* Price Badge Overlay */}
         <div className="absolute bottom-3 left-3 bg-brand-bg/85 px-3 py-1 rounded-md border border-brand-border">
           <span className="text-brand-green font-semibold font-sans">
             ₹{Number(property.monthly_rent).toLocaleString()}/mo
           </span>
+        </div>
+
+        {/* Availability Badge Overlay */}
+        <div className={`absolute bottom-3 right-3 px-2.5 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm shadow-md z-10 ${
+          isAvailable 
+            ? 'bg-emerald-500/80 border-emerald-400 text-white' 
+            : 'bg-amber-500/85 border-amber-400 text-white'
+        }`}>
+          {isAvailable ? 'Available' : 'Leased'}
         </div>
 
         {/* Type Badge */}

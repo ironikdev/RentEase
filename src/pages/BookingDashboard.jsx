@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../store/useAuth';
+import { useNotifications } from '../store/useNotifications';
 import { SkeletonLoader } from '../components/common/SkeletonLoader';
 import { Calendar, CreditCard, Clock, CheckCircle2, XCircle, Ban, MessageSquare, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -70,6 +71,30 @@ export default function BookingDashboard() {
       setBookings(prev =>
         prev.map(b => (b.id === bookingId ? { ...b, status: newStatus } : b))
       );
+
+      // Client-side availability update & notification fallback
+      const booking = bookings.find(b => b.id === bookingId);
+      if (booking) {
+        const prop = properties.find(p => p.id === booking.property_id);
+        if (prop) {
+          const isNowAvailable = newStatus === 'CANCELLED' || newStatus === 'COMPLETED' || newStatus === 'EXPIRED';
+          const updatedAvailability = { ...prop.availability, is_available: isNowAvailable };
+
+          try {
+            await supabase
+              .from('properties')
+              .update({ availability: updatedAvailability })
+              .eq('id', prop.id);
+          } catch (e) {
+            console.warn('Could not update property availability status (this is normal if RLS prevents tenant updates; trigger will handle):', e.message);
+          }
+
+          if (isNowAvailable) {
+            // Trigger availability notifications to all wishlisters in the local browser session
+            useNotifications.getState().triggerAvailabilityNotification(prop.id, prop.title);
+          }
+        }
+      }
     } catch (err) {
       alert('Failed to update booking: ' + err.message);
     }

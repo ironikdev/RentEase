@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../store/useAuth';
+import { useFavorites } from '../store/useFavorites';
 import { SkeletonLoader } from '../components/common/SkeletonLoader';
 import { InteractiveMap } from '../components/map/InteractiveMap';
 import { MapPin, BedDouble, Bath, Maximize, Calendar, Heart, ShieldCheck, Mail, ArrowLeft, ChevronLeft, ChevronRight, CalendarClock } from 'lucide-react';
@@ -23,7 +24,8 @@ export default function PropertyDetail() {
   const [landlord, setLandlord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
-  const [favorited, setFavorited] = useState(false);
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const favorited = property ? isFavorite(property.id, profile?.id) : false;
 
   // Booking Form State
   const [startDate, setStartDate] = useState('');
@@ -178,8 +180,8 @@ export default function PropertyDetail() {
           <ArrowLeft size={16} /> Back to discover
         </Link>
         <button
-          onClick={() => setFavorited(!favorited)}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-xs font-semibold transition-all ${favorited ? 'bg-brand-error/10 border-brand-error text-brand-error' : 'bg-brand-section border-brand-border hover:border-brand-green/40'}`}
+          onClick={() => toggleFavorite(property.id, profile?.id)}
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-xs font-semibold transition-all ${favorited ? 'bg-brand-error/10 border-brand-error text-brand-error hover:bg-brand-error/20' : 'bg-brand-section border-brand-border hover:border-brand-green/40'}`}
         >
           <Heart size={14} fill={favorited ? 'currentColor' : 'none'} /> {favorited ? 'Favorited' : 'Save Property'}
         </button>
