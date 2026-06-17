@@ -226,7 +226,7 @@ export const useNotifications = create((set, get) => {
         // Fetch properties status from Supabase
         const { data, error } = await supabase
           .from('properties')
-          .select('id, title, availability, availability_status')
+          .select('id, title, availability')
           .in('id', favoriteIds)
           .eq('status', 'PUBLISHED');
 

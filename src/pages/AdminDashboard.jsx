@@ -68,7 +68,11 @@ export default function AdminDashboard() {
         .from('properties')
         .select('*');
       if (propsErr) throw propsErr;
-      setProperties(propsData || []);
+      const mappedProps = (propsData || []).map(p => ({
+        ...p,
+        availability_status: p.availability?.is_available !== false ? 'Available' : 'Unavailable'
+      }));
+      setProperties(mappedProps);
 
       // Fetch Bookings
       const { data: bookingsData, error: bookingsErr } = await supabase
@@ -156,14 +160,20 @@ export default function AdminDashboard() {
   const handleTogglePropertyAvailability = async (propId, currentAvailabilityStatus) => {
     const newAvailabilityStatus = currentAvailabilityStatus === 'Available' ? 'Unavailable' : 'Available';
     try {
+      const prop = properties.find(p => p.id === propId);
+      const newAvailability = {
+        ...(prop?.availability || {}),
+        is_available: newAvailabilityStatus === 'Available'
+      };
+
       const { error } = await supabase
         .from('properties')
-        .update({ availability_status: newAvailabilityStatus })
+        .update({ availability: newAvailability })
         .eq('id', propId);
 
       if (error) throw error;
 
-      setProperties(prev => prev.map(p => p.id === propId ? { ...p, availability_status: newAvailabilityStatus } : p));
+      setProperties(prev => prev.map(p => p.id === propId ? { ...p, availability: newAvailability, availability_status: newAvailabilityStatus } : p));
 
       // Trigger notification workflow if transitioning from Unavailable -> Available
       if (currentAvailabilityStatus === 'Unavailable' && newAvailabilityStatus === 'Available') {

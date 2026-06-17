@@ -34,7 +34,11 @@ export default function LandingDiscover() {
           .eq('status', 'PUBLISHED');
 
         if (error) throw error;
-        setProperties(data || []);
+        const mapped = (data || []).map(p => ({
+          ...p,
+          availability_status: p.availability?.is_available !== false ? 'Available' : 'Unavailable'
+        }));
+        setProperties(mapped);
       } catch (err) {
         console.error('Error fetching properties:', err.message);
       } finally {
@@ -143,7 +147,10 @@ export default function LandingDiscover() {
           .select('*')
           .eq('landlord_id', profile.id);
         
-        const fetchedProps = props || [];
+        const fetchedProps = (props || []).map(p => ({
+          ...p,
+          availability_status: p.availability?.is_available !== false ? 'Available' : 'Unavailable'
+        }));
         if (!propsErr) setLandlordProperties(fetchedProps);
 
         const { data: books, error: booksErr } = await supabase
@@ -169,19 +176,25 @@ export default function LandingDiscover() {
   const handleTogglePropertyAvailability = async (propId, currentAvailabilityStatus) => {
     const newAvailabilityStatus = currentAvailabilityStatus === 'Available' ? 'Unavailable' : 'Available';
     try {
+      const prop = properties.find(p => p.id === propId) || landlordProperties.find(p => p.id === propId);
+      const newAvailability = {
+        ...(prop?.availability || {}),
+        is_available: newAvailabilityStatus === 'Available'
+      };
+
       const { error } = await supabase
         .from('properties')
-        .update({ availability_status: newAvailabilityStatus })
+        .update({ availability: newAvailability })
         .eq('id', propId);
 
       if (error) throw error;
 
       // Update state locally
       setLandlordProperties(prev => 
-        prev.map(p => p.id === propId ? { ...p, availability_status: newAvailabilityStatus } : p)
+        prev.map(p => p.id === propId ? { ...p, availability: newAvailability, availability_status: newAvailabilityStatus } : p)
       );
       setProperties(prev =>
-        prev.map(p => p.id === propId ? { ...p, availability_status: newAvailabilityStatus } : p)
+        prev.map(p => p.id === propId ? { ...p, availability: newAvailability, availability_status: newAvailabilityStatus } : p)
       );
 
       // Trigger notification workflow if transitioning from Unavailable -> Available
