@@ -48,10 +48,8 @@ global.localStorage.setItem('rentease_profiles', JSON.stringify([
 // Add favorite
 global.localStorage.setItem(`rentease_favorites_${mockTenantId}`, JSON.stringify([propertyId]));
 
-// Load stores
-import { useNotifications } from '../src/store/useNotifications.js';
-
 async function runTest() {
+  const { useNotifications } = await import('../src/store/useNotifications.js');
   console.log('Testing notification workflow...');
   
   const property = {
@@ -61,10 +59,12 @@ async function runTest() {
     description: 'A beautiful furnished studio apartment in Indiranagar.'
   };
 
-  // Trigger the workflow
-  console.log('Invoking triggerNotificationWorkflow for property:', property.title);
+  // Trigger the workflow first time
+  console.log('Invoking triggerNotificationWorkflow for property (1st time):', property.title);
+  await useNotifications.getState().triggerNotificationWorkflow(property);
   
-  // Call the store action
+  // Trigger the workflow second time
+  console.log('Invoking triggerNotificationWorkflow for property (2nd time):', property.title);
   await useNotifications.getState().triggerNotificationWorkflow(property);
   
   console.log('\nResulting notifications in localStorage for tenant:');

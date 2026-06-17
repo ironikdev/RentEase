@@ -252,8 +252,8 @@ export const useNotifications = create((set, get) => {
               newNotifs.push({
                 id: 'notif-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
                 propertyId: prop.id,
-                title: 'Property Available!',
-                message: `"${prop.title}" is now available for lease!`,
+                title: 'Property Available Again',
+                message: 'A property in your favorites is now available.',
                 read: false,
                 createdAt: new Date().toISOString()
               });
@@ -269,17 +269,39 @@ export const useNotifications = create((set, get) => {
           const notifKey = getStorageKey(profileId);
           if (isMockMode || !profileId) {
             const currentNotifs = JSON.parse(localStorage.getItem(notifKey) || '[]');
-            const updatedNotifs = [...newNotifs, ...currentNotifs];
-            localStorage.setItem(notifKey, JSON.stringify(updatedNotifs));
-            set((state) => ({
-              notifications: {
-                ...state.notifications,
-                [notifKey]: updatedNotifs
-              }
-            }));
+            
+            // Prevent duplicate unread notifications
+            const filteredNewNotifs = newNotifs.filter(n => 
+              !currentNotifs.some(existing => existing.propertyId === n.propertyId && existing.title === n.title && !existing.read)
+            );
+
+            if (filteredNewNotifs.length > 0) {
+              const updatedNotifs = [...filteredNewNotifs, ...currentNotifs];
+              localStorage.setItem(notifKey, JSON.stringify(updatedNotifs));
+              set((state) => ({
+                notifications: {
+                  ...state.notifications,
+                  [notifKey]: updatedNotifs
+                }
+              }));
+            }
           } else {
             // Save to Supabase
             for (const n of newNotifs) {
+              // Prevent duplicates in Supabase
+              const { data: existing, error: existErr } = await supabase
+                .from('notifications')
+                .select('id')
+                .eq('user_id', profileId)
+                .eq('property_id', n.propertyId)
+                .eq('title', n.title)
+                .eq('is_read', false);
+
+              if (!existErr && existing && existing.length > 0) {
+                console.log(`Skipping notification in checkFavoritesAvailability for user ${profileId} to prevent duplicates.`);
+                continue;
+              }
+
               await supabase.from('notifications').insert({
                 user_id: profileId,
                 property_id: n.propertyId,
@@ -310,15 +332,15 @@ export const useNotifications = create((set, get) => {
               const currentNotifs = JSON.parse(localStorage.getItem(notifKey) || '[]');
               
               // Skip if unread availability notification for the same property already exists
-              if (currentNotifs.some(n => n.propertyId === propertyId && !n.read && n.title === 'Property Available!')) {
+              if (currentNotifs.some(n => n.propertyId === propertyId && !n.read && n.title === 'Property Available Again')) {
                 continue;
               }
 
               const newNotif = {
                 id: 'notif-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
                 propertyId,
-                title: 'Property Available!',
-                message: `"${propertyTitle}" is now available for lease!`,
+                title: 'Property Available Again',
+                message: 'A property in your favorites is now available.',
                 read: false,
                 createdAt: new Date().toISOString()
               };
@@ -397,7 +419,7 @@ export const useNotifications = create((set, get) => {
 
         // 3. Prevent duplicate notifications for the same availability event
         const title = 'Property Available Again';
-        const message = `The property "${propertyTitle}" that you saved is now available for rent.`;
+        const message = 'A property in your favorites is now available.';
 
         for (const userProfile of profilesToNotify) {
           const userId = userProfile.id;
@@ -451,25 +473,6 @@ export const useNotifications = create((set, get) => {
                 is_read: false
               });
             if (insErr) console.error('Failed to insert Supabase notification:', insErr);
-          }
-
-          // Trigger email service API call
-          try {
-            const propertyUrl = `${window.location.origin}/properties/${propertyId}`;
-            await fetch('/api/send-email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                to: userProfile.email,
-                userName: userProfile.full_name || 'User',
-                propertyName: propertyTitle,
-                location,
-                rent: `₹${Number(monthlyRent).toLocaleString()}`,
-                propertyUrl
-              })
-            });
-          } catch (emailErr) {
-            console.error('Error calling send-email API:', emailErr);
           }
         }
 
