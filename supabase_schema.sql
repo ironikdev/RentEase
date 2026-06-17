@@ -78,7 +78,6 @@ create table public.properties (
   latitude double precision not null,
   longitude double precision not null,
   status text not null default 'PUBLISHED' check (status in ('DRAFT', 'PUBLISHED', 'SUSPENDED', 'DELETED')),
-  availability_status text not null default 'Available' check (availability_status in ('Available', 'Unavailable')),
   amenities text[] default '{}' not null,
   image_urls text[] default '{}' not null,
   availability jsonb default '{"booked_dates": []}'::jsonb not null,
@@ -346,8 +345,7 @@ RETURNS trigger AS $$
 BEGIN
   IF (NEW.status IN ('CONFIRMED', 'ACTIVE')) THEN
     UPDATE public.properties
-    SET availability = availability || '{"is_available": false}'::jsonb,
-        availability_status = 'Unavailable'
+    SET availability = availability || '{"is_available": false}'::jsonb
     WHERE id = NEW.property_id;
   ELSIF (NEW.status IN ('CANCELLED', 'COMPLETED', 'EXPIRED')) THEN
     -- Check if there are any other active/confirmed bookings
@@ -358,8 +356,7 @@ BEGIN
       AND status IN ('CONFIRMED', 'ACTIVE')
     ) THEN
       UPDATE public.properties
-      SET availability = availability || '{"is_available": true}'::jsonb,
-          availability_status = 'Available'
+      SET availability = availability || '{"is_available": true}'::jsonb
       WHERE id = NEW.property_id;
     END IF;
   END IF;

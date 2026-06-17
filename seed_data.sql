@@ -30,7 +30,7 @@ DELETE FROM public.properties WHERE landlord_id = 'd319e90d-141e-42d0-846e-bf5fc
 -- 4. Seed the 4 Bengalure properties
 INSERT INTO public.properties (
   landlord_id, title, type, description, area_sqft, bedrooms, bathrooms,
-  monthly_rent, security_deposit, latitude, longitude, status, availability_status, amenities, image_urls
+  monthly_rent, security_deposit, latitude, longitude, status, amenities, image_urls
 ) VALUES
 (
   'd319e90d-141e-42d0-846e-bf5fcbea68e5',
@@ -45,7 +45,6 @@ INSERT INTO public.properties (
   12.9716,
   77.5946,
   'PUBLISHED',
-  'Available',
   ARRAY['WiFi', 'AC', 'Parking', 'Gym', 'Pet-friendly'],
   ARRAY['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600', 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600']
 ),
@@ -62,7 +61,6 @@ INSERT INTO public.properties (
   12.9850,
   77.6050,
   'PUBLISHED',
-  'Available',
   ARRAY['WiFi', 'AC', 'Parking', 'Pool', 'Gym', 'Pet-friendly'],
   ARRAY['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=600']
 ),
@@ -79,7 +77,6 @@ INSERT INTO public.properties (
   12.9300,
   77.6100,
   'PUBLISHED',
-  'Available',
   ARRAY['WiFi', 'AC', 'Parking', 'Gym'],
   ARRAY['https://images.unsplash.com/photo-1502672071375-74387ec444a8?w=600', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600']
 ),
@@ -96,7 +93,6 @@ INSERT INTO public.properties (
   12.9900,
   77.5500,
   'PUBLISHED',
-  'Available',
   ARRAY['WiFi', 'Parking', 'Pet-friendly'],
   ARRAY['https://images.unsplash.com/photo-1484154218962-a197022b5858?w=600', 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600']
 );

@@ -241,8 +241,8 @@ export const useNotifications = create((set, get) => {
         const newNotifs = [];
 
         data.forEach(prop => {
-          // Check both legacy jsonb availability and new availability_status column
-          const isAvailable = prop.availability_status === 'Available' || (prop.availability?.is_available !== false);
+          // Check properties availability JSONB column
+          const isAvailable = prop.availability?.is_available !== false;
           currentAvailability[prop.id] = isAvailable;
 
           if (prevAvailability !== null) {
