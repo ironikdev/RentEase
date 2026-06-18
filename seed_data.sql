@@ -78,7 +78,7 @@ INSERT INTO public.properties (
   77.6100,
   'PUBLISHED',
   ARRAY['WiFi', 'AC', 'Parking', 'Gym'],
-  ARRAY['https://images.unsplash.com/photo-1502672071375-74387ec444a8?w=600', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600']
+  ARRAY['https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=600', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600']
 ),
 (
   'd319e90d-141e-42d0-846e-bf5fcbea68e5',

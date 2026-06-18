@@ -575,6 +575,10 @@ export default function LandingDiscover() {
                         src={image}
                         alt={prop.title}
                         className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600';
+                        }}
                       />
                       <div className="absolute top-3 right-3 flex gap-1">
                         <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded shadow border ${(prop.availability_status || 'Available') === 'Unavailable' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-brand-green/20 text-brand-green border-brand-green/30'}`}>

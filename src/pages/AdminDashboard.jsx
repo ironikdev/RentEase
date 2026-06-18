@@ -563,6 +563,10 @@ export default function AdminDashboard() {
                           src={p.image_urls?.[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=100'} 
                           alt={p.title} 
                           className="w-10 h-7 rounded border border-brand-border object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=100';
+                          }}
                         />
                         <div className="max-w-[180px] truncate">
                           <span className="font-bold text-brand-dark block truncate">{p.title}</span>

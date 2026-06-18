@@ -130,6 +130,10 @@ export const InteractiveMap = ({ properties = [], activePropId, onMarkerHover, o
                   src={prop.image_urls?.[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=150'}
                   alt={prop.title}
                   className="w-full h-20 object-cover rounded-md"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=150';
+                  }}
                 />
                 <h4 className="font-semibold text-xs text-brand-text line-clamp-1 mt-1">{prop.title}</h4>
                 <p className="text-brand-green text-xs font-bold">₹{Number(prop.monthly_rent).toLocaleString()}/month</p>

@@ -119,7 +119,7 @@ const DEFAULT_PROPERTIES = [
     status: 'PUBLISHED',
     amenities: ['WiFi', 'AC', 'Parking', 'Gym'],
     image_urls: [
-      'https://images.unsplash.com/photo-1502672071375-74387ec444a8?w=600',
+      'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=600',
       'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600'
     ],
     availability: { booked_dates: [] },
@@ -208,8 +208,32 @@ const initLocalStorage = () => {
       console.error('Error merging profiles:', e);
     }
   }
-  if (!localStorage.getItem('rentease_properties')) {
+  const cachedProps = localStorage.getItem('rentease_properties');
+  if (!cachedProps) {
     localStorage.setItem('rentease_properties', JSON.stringify(DEFAULT_PROPERTIES));
+  } else {
+    try {
+      const parsed = JSON.parse(cachedProps);
+      let updated = false;
+      const migrated = parsed.map(prop => {
+        if (prop.id === 'prop-3' && prop.image_urls) {
+          const hasBrokenUrl = prop.image_urls.some(url => url && url.includes('photo-1502672071375-74387ec444a8'));
+          if (hasBrokenUrl) {
+            prop.image_urls = [
+              'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=600',
+              'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600'
+            ];
+            updated = true;
+          }
+        }
+        return prop;
+      });
+      if (updated) {
+        localStorage.setItem('rentease_properties', JSON.stringify(migrated));
+      }
+    } catch (e) {
+      console.error('Error migrating cached properties:', e);
+    }
   }
   if (!localStorage.getItem('rentease_bookings')) {
     localStorage.setItem('rentease_bookings', JSON.stringify(DEFAULT_BOOKINGS));

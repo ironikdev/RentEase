@@ -193,6 +193,10 @@ export default function PropertyDetail() {
           src={images[activeImageIdx]}
           alt={property.title}
           className="w-full h-full object-cover transition-all duration-300"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800';
+          }}
         />
 
         {/* Carousel controls */}

@@ -190,6 +190,10 @@ export default function BookingCheckout() {
                 src={property.image_urls?.[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=150'}
                 alt={property.title}
                 className="w-16 h-16 rounded-lg object-cover border border-slate-200"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=150';
+                }}
               />
               <div className="space-y-0.5">
                 <h4 className="font-bold text-sm text-slate-900">{property.title}</h4>

@@ -54,6 +54,11 @@ export const PropertyCard = ({ property, onHover }) => {
           alt={property.title}
           className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setImgLoaded(true)}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600';
+            setImgLoaded(true);
+          }}
           loading="lazy"
         />
 
