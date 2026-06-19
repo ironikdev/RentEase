@@ -122,6 +122,7 @@ const DEFAULT_PROPERTIES = [
       'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=600',
       'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600'
     ],
+    virtual_tour_url: 'https://my.matterport.com/show/?m=J7uVWoWVAz3',
     availability: { booked_dates: [] },
     created_at: new Date(Date.now() - 5 * 86400000).toISOString()
   },
@@ -214,23 +215,44 @@ const initLocalStorage = () => {
   } else {
     try {
       const parsed = JSON.parse(cachedProps);
-      let updated = false;
-      const migrated = parsed.map(prop => {
-        if (prop.id === 'prop-3' && prop.image_urls) {
-          const hasBrokenUrl = prop.image_urls.some(url => url && url.includes('photo-1502672071375-74387ec444a8'));
-          if (hasBrokenUrl) {
-            prop.image_urls = [
-              'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=600',
-              'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600'
-            ];
-            updated = true;
-          }
+      
+      // Filter out user-created properties (those that do not use the default ID format 'prop-1' through 'prop-4')
+      const userProps = parsed.filter(p => !p.id.startsWith('prop-'));
+      
+      // Re-map the default properties from DEFAULT_PROPERTIES to overwrite any corrupted duplicate data,
+      // but preserve their existing booking availability details if present.
+      const defaultProps = DEFAULT_PROPERTIES.map(dp => {
+        const existing = parsed.find(p => p.id === dp.id);
+        if (existing) {
+          return {
+            ...dp,
+            availability: existing.availability || dp.availability
+          };
         }
-        return prop;
+        return dp;
       });
-      if (updated) {
-        localStorage.setItem('rentease_properties', JSON.stringify(migrated));
-      }
+
+      // Merge and sanitize all properties:
+      // Ensure only 'prop-3' (Urban Chic Penthouse) retains the virtual_tour_url.
+      const uniqueProps = [];
+      const seenIds = new Set();
+      
+      [...defaultProps, ...userProps].forEach(prop => {
+        if (!seenIds.has(prop.id)) {
+          seenIds.add(prop.id);
+          
+          const sanitizedProp = { ...prop };
+          if (sanitizedProp.id === 'prop-3') {
+            sanitizedProp.virtual_tour_url = 'https://my.matterport.com/show/?m=J7uVWoWVAz3';
+          } else {
+            delete sanitizedProp.virtual_tour_url;
+          }
+          
+          uniqueProps.push(sanitizedProp);
+        }
+      });
+
+      localStorage.setItem('rentease_properties', JSON.stringify(uniqueProps));
     } catch (e) {
       console.error('Error migrating cached properties:', e);
     }

@@ -5,7 +5,7 @@ import { useAuth } from '../store/useAuth';
 import { PropertyCard } from '../components/properties/PropertyCard';
 import { InteractiveMap } from '../components/map/InteractiveMap';
 import { SkeletonLoader } from '../components/common/SkeletonLoader';
-import { Search, SlidersHorizontal, ArrowUpDown, X, MapPin, Home, Plus, Trash2, ExternalLink, Wallet, TrendingUp, UserCheck, MessageSquare, Calendar } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, X, MapPin, Home, Plus, Trash2, ExternalLink, Wallet, TrendingUp, UserCheck, MessageSquare, Calendar, Pencil } from 'lucide-react';
 import { useNotifications } from '../store/useNotifications';
 
 export default function LandingDiscover() {
@@ -627,6 +627,13 @@ export default function LandingDiscover() {
                             title="View Property Detail"
                           >
                             <ExternalLink size={14} />
+                          </Link>
+                          <Link
+                            to={`/create-listing?id=${prop.id}`}
+                            className="p-1.5 bg-brand-surface hover:bg-brand-green/20 border border-brand-green/25 text-brand-green rounded transition-colors"
+                            title="Edit Listing"
+                          >
+                            <Pencil size={14} />
                           </Link>
                           <button
                             onClick={() => handleDeleteProperty(prop.id)}

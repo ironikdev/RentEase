@@ -32,6 +32,7 @@ export default function PropertyDetail() {
   const [endDate, setEndDate] = useState('');
   const [bookingError, setBookingError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showTourModal, setShowTourModal] = useState(false);
 
   useEffect(() => {
     async function loadPropertyDetails() {
@@ -285,6 +286,28 @@ export default function PropertyDetail() {
             </div>
           </div>
 
+          {/* 360° Virtual Tour Section */}
+          {property.virtual_tour_url && (
+            <div className="space-y-3 bg-brand-section border border-brand-border rounded-xl p-5 shadow-sm">
+              <h2 className="text-xl font-bold font-sans text-brand-text flex items-center gap-2">
+                <svg className="w-5 h-5 text-brand-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                360° Virtual Tour
+              </h2>
+              <p className="text-brand-secondary text-xs leading-normal">
+                Take an immersive virtual tour through this property. Walk around and examine the space interactively.
+              </p>
+              <button
+                onClick={() => setShowTourModal(true)}
+                className="mt-2 bg-brand-green hover:bg-brand-green-deep text-brand-dark hover:text-white font-bold text-xs py-2.5 px-5 rounded-lg flex items-center gap-2 uppercase tracking-wider transition-colors shadow"
+              >
+                View 360° Tour
+              </button>
+            </div>
+          )}
+
           {/* Neighbor Map */}
           <div className="space-y-3">
             <h2 className="text-xl font-bold font-sans text-brand-text">Location Map</h2>
@@ -417,6 +440,41 @@ export default function PropertyDetail() {
           </div>
         </div>
       </div>
+
+      {/* 360° Virtual Tour Modal Overlay */}
+      {showTourModal && property.virtual_tour_url && (
+        <div className="fixed inset-0 z-[1050] bg-brand-dark/95 backdrop-blur-md flex flex-col justify-between p-4 font-sans animate-fade-in">
+          {/* Modal Header */}
+          <div className="flex justify-between items-center pb-3 border-b border-brand-border/60">
+            <div>
+              <h3 className="font-bold text-brand-text text-sm sm:text-base">{property.title}</h3>
+              <p className="text-brand-green text-[10px] sm:text-xs font-semibold">360° Interactive Virtual Tour</p>
+            </div>
+            <button
+              onClick={() => setShowTourModal(false)}
+              className="text-brand-secondary hover:text-brand-text bg-brand-section border border-brand-border hover:border-brand-green/40 text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors"
+            >
+              Close Tour
+            </button>
+          </div>
+
+          {/* Modal Iframe Wrapper */}
+          <div className="flex-1 w-full my-4 bg-brand-bg border border-brand-border rounded-xl overflow-hidden relative shadow-2xl">
+            <iframe
+              src={property.virtual_tour_url}
+              title="360 Virtual Tour"
+              className="w-full h-full border-0 absolute inset-0"
+              allowFullScreen
+              allow="xr-spatial-tracking"
+            />
+          </div>
+          
+          {/* Modal Footer */}
+          <div className="text-center text-[10px] text-brand-secondary">
+            Use your mouse or finger to drag and look around. Click hotspots on the floor to navigate.
+          </div>
+        </div>
+      )}
     </div>
   );
 }

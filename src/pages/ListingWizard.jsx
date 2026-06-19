@@ -14,6 +14,9 @@ export default function ListingWizard() {
   const [saving, setSaving] = useState(false);
   const [autoSavedMsg, setAutoSavedMsg] = useState('');
 
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editPropId, setEditPropId] = useState(null);
+
   // Wizard Data State
   const [formData, setFormData] = useState({
     title: '',
@@ -28,6 +31,7 @@ export default function ListingWizard() {
     longitude: 77.5946,
     monthly_rent: '',
     security_deposit: '',
+    virtual_tour_url: '',
   });
 
   // Redirect if not landlord
@@ -37,16 +41,54 @@ export default function ListingWizard() {
     }
   }, [profile, navigate]);
 
-  // Load draft on mount
+  // Load draft or edit data on mount
   useEffect(() => {
-    const draft = localStorage.getItem('rentease_property_draft');
-    if (draft) {
-      setFormData(JSON.parse(draft));
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id) {
+      setIsEditMode(true);
+      setEditPropId(id);
+      const loadProperty = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('properties')
+            .select('*')
+            .eq('id', id)
+            .single();
+          if (error) throw error;
+          if (data) {
+            setFormData({
+              title: data.title || '',
+              type: data.type || 'APARTMENT',
+              description: data.description || '',
+              area_sqft: data.area_sqft || '',
+              bedrooms: String(data.bedrooms || '1'),
+              bathrooms: String(data.bathrooms || '1'),
+              amenities: data.amenities || [],
+              image_urls: data.image_urls || [],
+              latitude: data.latitude || 12.9716,
+              longitude: data.longitude || 77.5946,
+              monthly_rent: data.monthly_rent || '',
+              security_deposit: data.security_deposit || '',
+              virtual_tour_url: data.virtual_tour_url || '',
+            });
+          }
+        } catch (err) {
+          console.error('Error loading property for edit:', err.message);
+        }
+      };
+      loadProperty();
+    } else {
+      const draft = localStorage.getItem('rentease_property_draft');
+      if (draft) {
+        setFormData(JSON.parse(draft));
+      }
     }
   }, []);
 
-  // Autosave every 60 seconds
+  // Autosave every 60 seconds (only if not editing)
   useEffect(() => {
+    if (isEditMode) return;
     const interval = setInterval(() => {
       localStorage.setItem('rentease_property_draft', JSON.stringify(formData));
       setAutoSavedMsg('Draft auto-saved at ' + new Date().toLocaleTimeString());
@@ -54,15 +96,20 @@ export default function ListingWizard() {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [formData]);
+  }, [formData, isEditMode]);
 
   const saveManualDraft = () => {
+    if (isEditMode) return;
     localStorage.setItem('rentease_property_draft', JSON.stringify(formData));
     setAutoSavedMsg('Draft saved successfully!');
     setTimeout(() => setAutoSavedMsg(''), 3000);
   };
 
   const clearDraft = () => {
+    if (isEditMode) {
+      navigate('/bookings');
+      return;
+    }
     localStorage.removeItem('rentease_property_draft');
     setFormData({
       title: '',
@@ -77,6 +124,7 @@ export default function ListingWizard() {
       longitude: 77.5946,
       monthly_rent: '',
       security_deposit: '',
+      virtual_tour_url: '',
     });
     setStep(1);
   };
@@ -133,12 +181,19 @@ export default function ListingWizard() {
         status: 'PUBLISHED'
       };
 
-      const { error } = await supabase.from('properties').insert(payload);
-      if (error) throw error;
+      if (isEditMode) {
+        const { error } = await supabase
+          .from('properties')
+          .update(payload)
+          .eq('id', editPropId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('properties').insert(payload);
+        if (error) throw error;
+        localStorage.removeItem('rentease_property_draft');
+      }
 
-      // Clear draft
-      localStorage.removeItem('rentease_property_draft');
-      navigate('/bookings'); // Redirect to bookings / properties panel
+      navigate('/bookings');
     } catch (err) {
       alert(err.message || 'Failed to publish listing');
     } finally {
@@ -320,6 +375,18 @@ export default function ListingWizard() {
                   </div>
                 </div>
               )}
+
+              <div className="border-t border-brand-border/60 pt-4 mt-2">
+                <label className="block text-brand-secondary text-xs font-semibold uppercase tracking-wider mb-1.5">360° Virtual Tour URL (Optional)</label>
+                <input
+                  type="url"
+                  placeholder="e.g. https://my.matterport.com/show/?m=J7uVWoWVAz3"
+                  value={formData.virtual_tour_url || ''}
+                  onChange={(e) => handleInputChange('virtual_tour_url', e.target.value)}
+                  className="w-full bg-brand-bg border border-brand-border rounded-lg text-brand-text p-2.5 text-sm focus:outline-none focus:border-brand-green"
+                />
+                <p className="text-[10px] text-brand-secondary mt-1">Provide a publicly accessible Matterport or other 3D tour link to enable virtual viewings.</p>
+              </div>
             </div>
           )}
 
@@ -436,7 +503,7 @@ export default function ListingWizard() {
               onClick={clearDraft}
               className="text-brand-error hover:underline text-xs font-semibold"
             >
-              Discard Draft
+              {isEditMode ? 'Cancel Edit' : 'Discard Draft'}
             </button>
 
             <div className="flex items-center gap-3">
@@ -464,18 +531,20 @@ export default function ListingWizard() {
                   disabled={saving}
                   className="bg-brand-green hover:bg-brand-green-deep text-brand-dark disabled:bg-brand-border disabled:text-brand-secondary py-2 px-5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
                 >
-                  {saving ? 'Publishing...' : 'Publish Listing'}
+                  {saving ? 'Saving...' : isEditMode ? 'Save Changes' : 'Publish Listing'}
                 </button>
               )}
               
-              <button
-                type="button"
-                onClick={saveManualDraft}
-                className="bg-brand-bg border border-brand-border text-brand-secondary hover:text-brand-text py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
-                title="Save Draft to LocalStorage"
-              >
-                <Save size={14} />
-              </button>
+              {!isEditMode && (
+                <button
+                  type="button"
+                  onClick={saveManualDraft}
+                  className="bg-brand-bg border border-brand-border text-brand-secondary hover:text-brand-text py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
+                  title="Save Draft to LocalStorage"
+                >
+                  <Save size={14} />
+                </button>
+              )}
             </div>
           </div>
 

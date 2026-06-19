@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../store/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useNotifications } from '../store/useNotifications';
 import { 
   Users, 
@@ -19,7 +19,8 @@ import {
   ShieldCheck,
   Lock,
   Unlock,
-  Settings
+  Settings,
+  Pencil
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -628,6 +629,13 @@ export default function AdminDashboard() {
                           >
                             {p.status === 'PUBLISHED' ? 'Suspend' : 'Publish'}
                           </button>
+                          <Link
+                            to={`/create-listing?id=${p.id}`}
+                            className="p-1.5 bg-brand-surface hover:bg-brand-green/20 border border-brand-green/25 text-brand-green rounded transition-colors inline-block"
+                            title="Edit Property Details"
+                          >
+                            <Pencil size={13} />
+                          </Link>
                           <button
                             onClick={() => handleDeleteProperty(p.id)}
                             className="p-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-brand-error rounded transition-colors"
