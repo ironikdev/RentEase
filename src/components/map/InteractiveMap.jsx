@@ -1,14 +1,41 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet's default marker icons in bundlers like Vite
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
+
+// Component to ensure Leaflet recalculates dimensions when container mounts
+const MapResizer = () => {
+  const map = useMap();
+
+  useEffect(() => {
+    map.invalidateSize();
+    const t1 = setTimeout(() => map.invalidateSize(), 150);
+    const t2 = setTimeout(() => map.invalidateSize(), 500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [map]);
+
+  return null;
+};
 
 // Custom price icon generator (Rupees formatting)
 const createPriceIcon = (price, isActive) => {
-  const priceStr = price >= 100000 
-    ? `₹${(price / 100000).toFixed(1)}L` 
-    : price >= 1000 
-      ? `₹${(price / 1000).toFixed(0)}k` 
-      : `₹${price}`;
+  const numPrice = Number(price) || 0;
+  const priceStr = numPrice >= 100000 
+    ? `₹${(numPrice / 100000).toFixed(1)}L` 
+    : numPrice >= 1000 
+      ? `₹${(numPrice / 1000).toFixed(0)}k` 
+      : `₹${numPrice}`;
   return L.divIcon({
     className: 'custom-price-marker',
     html: `
@@ -21,42 +48,79 @@ const createPriceIcon = (price, isActive) => {
   });
 };
 
-// Component to dynamically adjust map view based on visible properties
-const FitBounds = ({ properties }) => {
+// Component to dynamically adjust map view ONCE on load or filter reset.
+// CRITICAL: Must NEVER re-fit bounds while the user is manually zooming or panning!
+const FitBounds = ({ properties, isUserInteractingRef, resetBounds }) => {
   const map = useMap();
+  const hasFittedRef = useRef(false);
+
+  // If resetBounds is triggered (e.g. user clears map view filter), allow re-fitting once
+  useEffect(() => {
+    if (resetBounds) {
+      hasFittedRef.current = false;
+      if (isUserInteractingRef) {
+        isUserInteractingRef.current = false;
+      }
+    }
+  }, [resetBounds, isUserInteractingRef]);
 
   useEffect(() => {
+    // If user has zoomed or dragged, do NOT override their manual view!
+    if (isUserInteractingRef?.current) return;
+    if (hasFittedRef.current) return;
     if (!properties || properties.length === 0) return;
     
-    const bounds = L.latLngBounds(properties.map(p => [p.latitude, p.longitude]));
-    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-  }, [properties, map]);
+    const validProps = properties.filter(
+      p => p && p.latitude != null && p.longitude != null && !isNaN(Number(p.latitude)) && !isNaN(Number(p.longitude))
+    );
+
+    if (validProps.length === 0) return;
+
+    if (validProps.length === 1) {
+      map.setView([Number(validProps[0].latitude), Number(validProps[0].longitude)], 14);
+      hasFittedRef.current = true;
+      return;
+    }
+
+    try {
+      const bounds = L.latLngBounds(validProps.map(p => [Number(p.latitude), Number(p.longitude)]));
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+        hasFittedRef.current = true;
+      }
+    } catch (e) {
+      console.warn('[InteractiveMap] Error fitting bounds:', e);
+    }
+  }, [properties, map, isUserInteractingRef]);
 
   return null;
 };
 
-// Component to handle map interactions like dragging and zoom changes
-const MapEvents = ({ onBoundsChange }) => {
+// Component to handle map interactions like dragging and zooming with debouncing
+const MapEvents = ({ onBoundsChange, isUserInteractingRef }) => {
+  const timeoutRef = useRef(null);
+
   useMapEvents({
-    dragend: (e) => {
-      const map = e.target;
-      const bounds = map.getBounds();
-      if (onBoundsChange) {
-        onBoundsChange({
-          northEast: bounds.getNorthEast(),
-          southWest: bounds.getSouthWest()
-        });
-      }
+    movestart: () => {
+      if (isUserInteractingRef) isUserInteractingRef.current = true;
     },
-    zoomend: (e) => {
-      const map = e.target;
-      const bounds = map.getBounds();
-      if (onBoundsChange) {
+    zoomstart: () => {
+      if (isUserInteractingRef) isUserInteractingRef.current = true;
+    },
+    dragstart: () => {
+      if (isUserInteractingRef) isUserInteractingRef.current = true;
+    },
+    moveend: (e) => {
+      if (!onBoundsChange) return;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        const map = e.target;
+        const bounds = map.getBounds();
         onBoundsChange({
           northEast: bounds.getNorthEast(),
           southWest: bounds.getSouthWest()
         });
-      }
+      }, 350);
     }
   });
 
@@ -87,37 +151,57 @@ const MapClickSelector = ({ onMapClick, selectedLatLng }) => {
     }
   });
 
-  return selectedLatLng ? (
+  return selectedLatLng && selectedLatLng.lat != null && selectedLatLng.lng != null ? (
     <Marker 
-      position={[selectedLatLng.lat, selectedLatLng.lng]} 
+      position={[Number(selectedLatLng.lat), Number(selectedLatLng.lng)]} 
       icon={createClickPinIcon()}
     />
   ) : null;
 };
 
-export const InteractiveMap = ({ properties = [], activePropId, onMarkerHover, onBoundsChange, onMapClick, selectedLatLng }) => {
+export const InteractiveMap = ({
+  properties = [],
+  activePropId,
+  onMarkerHover,
+  onBoundsChange,
+  onMapClick,
+  selectedLatLng,
+  resetBounds = false
+}) => {
   // Default position centers over Bangalore, India
   const defaultCenter = [12.9716, 77.5946];
   const defaultZoom = 12;
 
+  // Track whether movement is user-initiated (zoom/pan) to avoid auto-fit loops
+  const isUserInteractingRef = useRef(false);
+
+  // Filter properties with valid lat/long before creating markers
+  const validProperties = properties.filter(
+    prop => prop && prop.latitude != null && prop.longitude != null && !isNaN(Number(prop.latitude)) && !isNaN(Number(prop.longitude))
+  );
+
   return (
-    <div className="w-full h-full relative" id="property-map">
+    <div className="w-full h-full min-h-[350px] relative" id="property-map" style={{ width: '100%', height: '100%', minHeight: '350px' }}>
       <MapContainer
         center={defaultCenter}
         zoom={defaultZoom}
-        className="w-full h-full min-h-[400px] rounded-xl"
+        className="w-full h-full min-h-[350px] rounded-xl"
+        style={{ width: '100%', height: '100%', minHeight: '350px' }}
         scrollWheelZoom={true}
       >
-        {/* Light-themed tile layer provider (CartoDB Positron matches the light/white aesthetics perfectly) */}
+        <MapResizer />
+
+        {/* 100% Free OpenStreetMap tile provider - No API key required, no 403 Forbidden errors */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maxZoom={19}
         />
         
-        {properties.map(prop => (
+        {validProperties.map(prop => (
           <Marker
             key={prop.id}
-            position={[prop.latitude, prop.longitude]}
+            position={[Number(prop.latitude), Number(prop.longitude)]}
             icon={createPriceIcon(prop.monthly_rent, prop.id === activePropId)}
             eventHandlers={{
               mouseover: () => onMarkerHover && onMarkerHover(prop.id),
@@ -145,8 +229,15 @@ export const InteractiveMap = ({ properties = [], activePropId, onMarkerHover, o
           </Marker>
         ))}
 
-        <FitBounds properties={properties} />
-        <MapEvents onBoundsChange={onBoundsChange} />
+        <FitBounds
+          properties={validProperties}
+          isUserInteractingRef={isUserInteractingRef}
+          resetBounds={resetBounds}
+        />
+        <MapEvents
+          onBoundsChange={onBoundsChange}
+          isUserInteractingRef={isUserInteractingRef}
+        />
         <MapClickSelector onMapClick={onMapClick} selectedLatLng={selectedLatLng} />
       </MapContainer>
     </div>

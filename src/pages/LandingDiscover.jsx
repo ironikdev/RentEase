@@ -839,6 +839,7 @@ export default function LandingDiscover() {
           activePropId={activePropId}
           onMarkerHover={setActivePropId}
           onBoundsChange={handleBoundsChange}
+          resetBounds={!mapBounds}
         />
       </div>
     </div>

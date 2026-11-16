@@ -380,7 +380,7 @@ export default function ListingWizard() {
                 <label className="block text-brand-secondary text-xs font-semibold uppercase tracking-wider mb-1.5">360° Virtual Tour URL (Optional)</label>
                 <input
                   type="url"
-                  placeholder="e.g. https://my.matterport.com/show/?m=J7uVWoWVAz3"
+                  placeholder="e.g. https://my.matterport.com/show/?m=HP8wMCmfb97"
                   value={formData.virtual_tour_url || ''}
                   onChange={(e) => handleInputChange('virtual_tour_url', e.target.value)}
                   className="w-full bg-brand-bg border border-brand-border rounded-lg text-brand-text p-2.5 text-sm focus:outline-none focus:border-brand-green"

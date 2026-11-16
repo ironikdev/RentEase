@@ -122,7 +122,7 @@ const DEFAULT_PROPERTIES = [
       'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=600',
       'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600'
     ],
-    virtual_tour_url: 'https://my.matterport.com/show/?m=J7uVWoWVAz3',
+    virtual_tour_url: 'https://my.matterport.com/show/?m=HP8wMCmfb97',
     availability: { booked_dates: [] },
     created_at: new Date(Date.now() - 5 * 86400000).toISOString()
   },
@@ -243,7 +243,7 @@ const initLocalStorage = () => {
           
           const sanitizedProp = { ...prop };
           if (sanitizedProp.id === 'prop-3') {
-            sanitizedProp.virtual_tour_url = 'https://my.matterport.com/show/?m=J7uVWoWVAz3';
+            sanitizedProp.virtual_tour_url = 'https://my.matterport.com/show/?m=HP8wMCmfb97';
           } else {
             delete sanitizedProp.virtual_tour_url;
           }
